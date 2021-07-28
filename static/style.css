@@ -1,0 +1,78 @@
+body{
+    margin:0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* background-color: blueviolet; */
+}
+
+header{
+    margin:0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 3%;
+}
+
+main{
+    height: 800px;
+    width: 85%;
+    margin:0;
+    display: flex;
+    /* flex-direction: row; */
+    /* justify-content: center; */
+}
+
+div.canvas {
+    position:sticky;
+    border: 1px solid black;
+    align-self: center;
+    height: 800px;
+    overflow: scroll;
+    width: 100%;
+}
+
+#titulo_pag{
+    font-family:Verdana, Geneva, Tahoma, sans-serif;
+}
+
+.prueba{
+    background-color:cadetblue;
+    width: 5%;
+}
+
+.boton{
+    margin-top: 7%;
+}
+
+.btn-group{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.boton-play{
+    background-color:#8FBC8F;
+    border-radius: 20%;
+    margin-right: 10%;
+}
+
+.boton-parar{
+    background-color:orangered;
+    border-radius: 20%;
+    margin-right: 10%;
+}
+
+.boton-pause{
+    /* background-color:lightblue; */
+    border-radius: 20%;
+    margin-right: 10%;
+}
+
+.boton-acelerar{
+    background-color:yellow;
+    margin-right: 10%;
+    border-radius: 20%;
+}
