@@ -493,11 +493,97 @@ function salidaServidor(tuberiaCentral, numCpu, listaEtiquetas) {
 
 //funcion para hacer huecos blancos en tuberias
 
-// class Simulacion{
-//     constructor(estaciones)
-// }
+class Simulacion{
+    constructor(){
+        this.numCpu = 3;
+        this.listaEtiquetas = ['HDD0', 'HDD1', 'HDD2']
+    }
+}
 
-function main() {
+function dibujarTuberiaCentral(numCpu, estaciones, pos){
+    if (numCpu > 1) {
+        if (estaciones.length > 1) {
+            var tuberiaCentral = new Tuberia(cpus[0].tuberiaSalida.tox + Tuberia.ancho, pos['medio'],
+                estaciones[0].tuberiaEntrada.fromx - Tuberia.ancho, pos['medio'],
+                false, true);
+        }
+        else {
+            var tuberiaCentral = new Tuberia(cpus[0].tuberiaSalida.tox + Tuberia.ancho, pos['medio'],
+                estaciones[0].tuberiaEntrada.fromx, pos['medio'],
+                false, true);
+        }
+        tuberiaCentral.draw();
+    }
+    //se descuadra debido a las tuberias adicionales que sí hay con mas cpus
+    else {
+        if (estaciones.length > 1) {
+            var tuberiaCentral = new Tuberia(cpus[0].tuberiaSalida.tox, pos['cpus'] + Tuberia.ancho / 2,
+                estaciones[0].tuberiaEntrada.fromx - Tuberia.ancho, pos['cpus'] + Tuberia.ancho / 2,
+                false, true);
+        }
+        else {
+            var tuberiaCentral = new Tuberia(cpus[0].tuberiaSalida.tox, pos['medio'],
+                estaciones[0].tuberiaEntrada.fromx, pos['medio'],
+                false);
+        }
+    }
+
+    tuberiaCentral.draw();
+
+    return tuberiaCentral;
+}
+
+function dibujarRestoUnaEstacion(numCpu, estaciones){
+    //dibujar esquinita superior derecha
+    let dict = {}
+    new Esquina(estaciones[0].tuberiaSalida.tox, estaciones[0].tuberiaSalida.toy, 'sup_dcha');
+
+    //conjunto de tuberias hacia la izda
+
+    //tuberia hacia abajo
+    var tuberia = new Tuberia(estaciones[0].tuberiaSalida.tox, estaciones[0].tuberiaSalida.toy + Tuberia.ancho, estaciones[0].tuberiaSalida.tox, cpus[cpus.length - 1].tuberiaSalida.toy + Tuberia.ancho + pos['separacion'], true);
+    tuberia.draw();
+    dict['tuberiaPabajo'] = tuberia;
+
+    //esquinita inferior derecha
+    new Esquina(tuberia.tox + Tuberia.ancho, tuberia.toy, 'inf_dcha')
+
+
+
+    //tuberia parriba
+
+    if (numCpu == 1) {
+        //tuberia a la izda
+        var tuberiaIzda = new Tuberia(tuberia.tox, tuberia.toy, (cpus[0].tuberiaEntrada.fromx + cpus[0].cola.x) / 2 + Tuberia.ancho / 2, tuberia.toy);
+        tuberiaIzda.draw();
+
+        //esquinita inferior izquierda
+        new Esquina(tuberiaIzda.tox - Tuberia.ancho, tuberia.toy, 'inf_izda')
+
+        var tuberiaParriba = new Tuberia(tuberiaIzda.tox - Tuberia.ancho, tuberia.toy,
+            tuberiaIzda.tox - Tuberia.ancho, cpus[0].tuberiaEntrada.fromy + Tuberia.ancho,
+            true, true);
+        tuberiaParriba.draw();
+    }
+    else {
+        var tuberiaIzda = new Tuberia(tuberia.tox, tuberia.toy, (tuberiaPrincipio.fromx + cpus[0].tuberiaEntrada.fromx) / 2 + Tuberia.ancho / 2, tuberia.toy);
+        tuberiaIzda.draw();
+
+        new Esquina(tuberiaIzda.tox - Tuberia.ancho, tuberia.toy, 'inf_izda')
+
+        var tuberiaParriba = new Tuberia(tuberiaIzda.tox - Tuberia.ancho, tuberia.toy,
+            tuberiaIzda.tox - Tuberia.ancho, tuberiaPrincipio.toy + Tuberia.ancho,
+            true, true);
+        tuberiaParriba.draw();
+    }
+
+    dict['tuberiaIzda'] = tuberiaIzda
+    dict['tuberiaParriba'] = tuberiaParriba
+
+    return dict;
+}
+
+function dibujarMapa() {
     //dibujar cpus
     var numCpu = 3;
     // var listaEtiquetas = ['HDD', 'SSD', 'NIC'];
@@ -528,83 +614,16 @@ function main() {
 
     //tuberia central
 
-    if (numCpu > 1) {
-        if (estaciones.length > 1) {
-            var tuberiaCentral = new Tuberia(cpus[0].tuberiaSalida.tox + Tuberia.ancho, pos['medio'],
-                estaciones[0].tuberiaEntrada.fromx - Tuberia.ancho, pos['medio'],
-                false, true);
-        }
-        else {
-            var tuberiaCentral = new Tuberia(cpus[0].tuberiaSalida.tox + Tuberia.ancho, pos['medio'],
-                estaciones[0].tuberiaEntrada.fromx, pos['medio'],
-                false, true);
-        }
-        tuberiaCentral.draw();
-    }
-    //se descuadra debido a las tuberias adicionales que sí hay con mas cpus
-    else {
-        if (estaciones.length > 1) {
-            var tuberiaCentral = new Tuberia(cpus[0].tuberiaSalida.tox, pos['cpus'] + Tuberia.ancho / 2,
-                estaciones[0].tuberiaEntrada.fromx - Tuberia.ancho, pos['cpus'] + Tuberia.ancho / 2,
-                false, true);
-        }
-        else {
-            var tuberiaCentral = new Tuberia(cpus[0].tuberiaSalida.tox, pos['medio'],
-                estaciones[0].tuberiaEntrada.fromx, pos['medio'],
-                false);
-        }
-    }
-
-    tuberiaCentral.draw();
+    let tuberiaCentral = dibujarTuberiaCentral(numCpu, estaciones, pos)
     dict['tuberiaSalida'] = salidaServidor(tuberiaCentral, numCpu, listaEtiquetas);
 
     //recorrido de fin a inicio!
 
     if (estaciones.length == 1) {
-        //dibujar esquinita superior derecha
-        new Esquina(estaciones[0].tuberiaSalida.tox, estaciones[0].tuberiaSalida.toy, 'sup_dcha');
-
-        //conjunto de tuberias hacia la izda
-
-        //tuberia hacia abajo
-        var tuberia = new Tuberia(estaciones[0].tuberiaSalida.tox, estaciones[0].tuberiaSalida.toy + Tuberia.ancho, estaciones[0].tuberiaSalida.tox, cpus[cpus.length - 1].tuberiaSalida.toy + Tuberia.ancho + pos['separacion'], true);
-        tuberia.draw();
-        dict['tuberiaPabajo'] = tuberia;
-
-        //esquinita inferior derecha
-        new Esquina(tuberia.tox + Tuberia.ancho, tuberia.toy, 'inf_dcha')
-
-
-
-        //tuberia parriba
-
-        if (numCpu == 1) {
-            //tuberia a la izda
-            var tuberiaIzda = new Tuberia(tuberia.tox, tuberia.toy, (cpus[0].tuberiaEntrada.fromx + cpus[0].cola.x) / 2 + Tuberia.ancho / 2, tuberia.toy);
-            tuberiaIzda.draw();
-
-            //esquinita inferior izquierda
-            new Esquina(tuberiaIzda.tox - Tuberia.ancho, tuberia.toy, 'inf_izda')
-
-            var tuberiaParriba = new Tuberia(tuberiaIzda.tox - Tuberia.ancho, tuberia.toy,
-                tuberiaIzda.tox - Tuberia.ancho, cpus[0].tuberiaEntrada.fromy + Tuberia.ancho,
-                true, true);
-            tuberiaParriba.draw();
-        }
-        else {
-            var tuberiaIzda = new Tuberia(tuberia.tox, tuberia.toy, (tuberiaPrincipio.fromx + cpus[0].tuberiaEntrada.fromx) / 2 + Tuberia.ancho / 2, tuberia.toy);
-            tuberiaIzda.draw();
-
-            new Esquina(tuberiaIzda.tox - Tuberia.ancho, tuberia.toy, 'inf_izda')
-
-            var tuberiaParriba = new Tuberia(tuberiaIzda.tox - Tuberia.ancho, tuberia.toy,
-                tuberiaIzda.tox - Tuberia.ancho, tuberiaPrincipio.toy + Tuberia.ancho,
-                true, true);
-            tuberiaParriba.draw();
-        }
-        dict['tuberiaIzda'] = tuberiaIzda;
-        dict['tuberiaParriba'] = tuberiaParriba;
-
+        let dictRestoEstacion = dibujarRestoUnaEstacion(numCpu, estaciones)
+        dict['tuberiaIzda'] = dictRestoEstacion['tuberiaIzda'];
+        dict['tuberiaParriba'] = dictRestoEstacion['tuberiaParriba'];
+        dict['tuberiaPabajo'] = dictRestoEstacion['tuberiaPabajo']
     }
 
     dict['cpus'] = cpus;
@@ -614,7 +633,7 @@ function main() {
     return dict;
 }
 
-var datos = main();
+var datos = dibujarMapa();
 
 // el server tiene que decidir los destinos de acuerdo a los que hay (se piden los destinos por GET)
 // el server los manda en formato json
@@ -1396,7 +1415,7 @@ class Peticion {
 //modo lento -> default_v = 1
 
 
-//tengo que encontrar la forma de parar la ejecución de la función main en javascript
+//tengo que encontrar la forma de parar la ejecución de la función dibujarMapa en javascript
 //tengo que ampliar el movimiento de la bola para más cpus y más hdds
 
 var default_v = 9;
@@ -1561,7 +1580,7 @@ var raf
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    datos = main();
+    datos = dibujarMapa();
     
     //dibujamos bola donde corresponda
     for (let i = 0; i < 20; ++i){
