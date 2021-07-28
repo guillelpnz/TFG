@@ -408,7 +408,7 @@ function dibujarEstaciones(pos, listaEtiquetas,) {
     return dict;
 }
 
-function restoRecorridoEstaciones(estaciones, tuberiaFinal, pos, numCpu, tuberiaPrincipio) {
+function restoRecorridoEstaciones(estaciones, tuberiaFinal, pos, numCpu, tuberiaPrincipio, cpus) {
     new Esquina(estaciones[0].tuberiaEntrada.fromx - Tuberia.ancho, estaciones[0].tuberiaEntrada.fromy + Tuberia.ancho, 'sup_izda');
     new Esquina(estaciones[estaciones.length - 1].tuberiaEntrada.fromx - Tuberia.ancho, estaciones[estaciones.length - 1].tuberiaEntrada.fromy, 'inf_izda');
 
@@ -493,14 +493,7 @@ function salidaServidor(tuberiaCentral, numCpu, listaEtiquetas) {
 
 //funcion para hacer huecos blancos en tuberias
 
-class Simulacion{
-    constructor(){
-        this.numCpu = 3;
-        this.listaEtiquetas = ['HDD0', 'HDD1', 'HDD2']
-    }
-}
-
-function dibujarTuberiaCentral(numCpu, estaciones, pos){
+function dibujarTuberiaCentral(numCpu, estaciones, pos, cpus){
     if (numCpu > 1) {
         if (estaciones.length > 1) {
             var tuberiaCentral = new Tuberia(cpus[0].tuberiaSalida.tox + Tuberia.ancho, pos['medio'],
@@ -533,7 +526,7 @@ function dibujarTuberiaCentral(numCpu, estaciones, pos){
     return tuberiaCentral;
 }
 
-function dibujarRestoUnaEstacion(numCpu, estaciones){
+function dibujarRestoUnaEstacion(numCpu, estaciones, cpus, pos){
     //dibujar esquinita superior derecha
     let dict = {}
     new Esquina(estaciones[0].tuberiaSalida.tox, estaciones[0].tuberiaSalida.toy, 'sup_dcha');
@@ -583,57 +576,65 @@ function dibujarRestoUnaEstacion(numCpu, estaciones){
     return dict;
 }
 
-function dibujarMapa() {
-    //dibujar cpus
-    var numCpu = 3;
-    // var listaEtiquetas = ['HDD', 'SSD', 'NIC'];
-    var listaEtiquetas = ['HDD0', 'HDD1', 'HDD2'];
-
-    var pos = calcularPosicionesEstaciones(numCpu, listaEtiquetas.length);
-
-    dict_cpus = dibujarCpus(pos, numCpu);
-    cpus = dict_cpus["cpus"];
-
-    var dict = dibujarEstaciones(pos, listaEtiquetas);
-
-    if (numCpu > 1) {
-        var tuberiaPrincipio = dibujarEntradaCpus(cpus, numCpu, pos);
-        dict['tuberiaPrincipio'] = tuberiaPrincipio
+class Simulacion{
+    constructor(){
+        this.numCpu = 1;
+        this.listaEtiquetas = ['HDD0'];
+        this.inicioSimulacion = new Date().getTime();
     }
-
-    dict['tuberiaIntermediaIzdaCpus'] = dict_cpus["tuberiaIntermediaIzdaCpus"];
-    dict['tuberiaIntermediaDchaCpus'] = dict_cpus["tuberiaIntermediaDchaCpus"];
-    var estaciones = dict['estaciones'];
-    var tuberiaFinal = dict['tuberiaFinal'];
-
-    //resto recorrido estaciones
-    if (estaciones.length > 1) {
-        let dict_resto = restoRecorridoEstaciones(estaciones, tuberiaFinal, pos, numCpu, tuberiaPrincipio);
-        dict = { ...dict, ...dict_resto };
+    dibujarMapa() {
+        //dibujar cpus
+    
+        var pos = calcularPosicionesEstaciones(simulacion.numCpu, simulacion.listaEtiquetas.length);
+    
+        let dict_cpus = dibujarCpus(pos, simulacion.numCpu);
+        let cpus = dict_cpus["cpus"];
+    
+        var dict = dibujarEstaciones(pos, simulacion.listaEtiquetas);
+    
+        if (simulacion.numCpu > 1) {
+            var tuberiaPrincipio = dibujarEntradaCpus(cpus, simulacion.numCpu, pos);
+            dict['tuberiaPrincipio'] = tuberiaPrincipio
+        }
+    
+        dict['tuberiaIntermediaIzdaCpus'] = dict_cpus["tuberiaIntermediaIzdaCpus"];
+        dict['tuberiaIntermediaDchaCpus'] = dict_cpus["tuberiaIntermediaDchaCpus"];
+        var estaciones = dict['estaciones'];
+        var tuberiaFinal = dict['tuberiaFinal'];
+    
+        //resto recorrido estaciones
+        if (estaciones.length > 1) {
+            let dict_resto = restoRecorridoEstaciones(estaciones, tuberiaFinal, pos, simulacion.numCpu, tuberiaPrincipio, cpus);
+            dict = { ...dict, ...dict_resto };
+        }
+    
+        //tuberia central
+    
+        let tuberiaCentral = dibujarTuberiaCentral(simulacion.numCpu, estaciones, pos, cpus)
+        dict['tuberiaSalida'] = salidaServidor(tuberiaCentral, simulacion.numCpu, simulacion.listaEtiquetas);
+    
+        //recorrido de fin a inicio!
+    
+        if (estaciones.length == 1) {
+            let dictRestoEstacion = dibujarRestoUnaEstacion(simulacion.numCpu, estaciones, cpus, pos)
+            dict['tuberiaIzda'] = dictRestoEstacion['tuberiaIzda'];
+            dict['tuberiaParriba'] = dictRestoEstacion['tuberiaParriba'];
+            dict['tuberiaPabajo'] = dictRestoEstacion['tuberiaPabajo']
+        }
+    
+        dict['cpus'] = cpus;
+        dict['estaciones'] = estaciones;
+        dict['tuberiaCentral'] = tuberiaCentral;
+    
+        return dict;
     }
-
-    //tuberia central
-
-    let tuberiaCentral = dibujarTuberiaCentral(numCpu, estaciones, pos)
-    dict['tuberiaSalida'] = salidaServidor(tuberiaCentral, numCpu, listaEtiquetas);
-
-    //recorrido de fin a inicio!
-
-    if (estaciones.length == 1) {
-        let dictRestoEstacion = dibujarRestoUnaEstacion(numCpu, estaciones)
-        dict['tuberiaIzda'] = dictRestoEstacion['tuberiaIzda'];
-        dict['tuberiaParriba'] = dictRestoEstacion['tuberiaParriba'];
-        dict['tuberiaPabajo'] = dictRestoEstacion['tuberiaPabajo']
-    }
-
-    dict['cpus'] = cpus;
-    dict['estaciones'] = estaciones;
-    dict['tuberiaCentral'] = tuberiaCentral;
-
-    return dict;
 }
 
-var datos = dibujarMapa();
+var simulacion = new Simulacion();
+
+var datos = simulacion.dibujarMapa();
+
+// he decidido que datos sea una variable global al programa porque la utilizan casi todas las clases y funciones, y es muy necesaria.
 
 // el server tiene que decidir los destinos de acuerdo a los que hay (se piden los destinos por GET)
 // el server los manda en formato json
@@ -641,11 +642,11 @@ var datos = dibujarMapa();
 // una cpu se ha pasado si la x ha estao en donde todas las cpus y la y en un rango
 
 class Peticion {
-
+    static default_v = 9;
     constructor(){
         this.x = (datos['cpus'].length == 1) ? datos['cpus'][0].tuberiaEntrada.fromx + Tuberia.ancho / 2 : datos['tuberiaPrincipio'].fromx + Tuberia.ancho / 2;
         this.y = (datos['cpus'].length == 1) ? datos['cpus'][0].tuberiaEntrada.fromy + Tuberia.ancho / 2 : datos['tuberiaPrincipio'].fromy + Tuberia.ancho / 2;
-        this.vx = default_v;
+        this.vx = Peticion.default_v;
         this.vy = 0;
         this.radius = 10;
         this.color = getRandomColor();
@@ -718,12 +719,12 @@ class Peticion {
             if (datos['cpus'].length == 1) {
                 if (this.x >= datos['cpus'][0].tuberiaEntrada.fromx && this.x < datos['cpus'][0].cola.cola[0].x + EstacionServicio.tamHuecos / 2 &&
                     this.y == datos['cpus'][0].tuberiaEntrada.fromy + Tuberia.ancho / 2) {
-                    let salto = xDchaCerca(this.x, datos['cpus'][0].cola.cola[0].x + EstacionServicio.tamHuecos / 2, default_v);
+                    let salto = xDchaCerca(this.x, datos['cpus'][0].cola.cola[0].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
                     if (salto) {
                         this.avanzarDcha(salto);
                     }
                     else {
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                     }
                 }
 
@@ -758,13 +759,13 @@ class Peticion {
                             }
                             
                             else {
-                                this.avanzarDcha(default_v);
+                                this.avanzarDcha(Peticion.default_v);
                             }
                             break;
                         }
                         else {
                             if (i != datos['cpus'][0].cola.cola.length - 1) {
-                                let salto = xDchaCerca(this.x, datos['cpus'][0].cola.cola[i + 1].x + EstacionServicio.tamHuecos / 2, default_v);
+                                let salto = xDchaCerca(this.x, datos['cpus'][0].cola.cola[i + 1].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
 
                                 if (salto) {
                                     this.avanzarDcha(salto);
@@ -772,19 +773,19 @@ class Peticion {
                                     break;
                                 }
                                 else {
-                                    this.avanzarDcha(default_v);
+                                    this.avanzarDcha(Peticion.default_v);
                                 }
                             }
                             //Hay que saltar al recurso fisico
                             else {
-                                let salto = xDchaCerca(this.x, datos['cpus'][0].recursoFisico.x, default_v);
+                                let salto = xDchaCerca(this.x, datos['cpus'][0].recursoFisico.x, Peticion.default_v);
 
                                 if (salto) {
                                     this.avanzarDcha(salto);
                                     break;
                                 }
                                 else {
-                                    this.avanzarDcha(default_v);
+                                    this.avanzarDcha(Peticion.default_v);
                                 }
                             }
                         }
@@ -802,7 +803,7 @@ class Peticion {
                         this.parar();
                     }
                     else {
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                         this.destinos.shift();
                         this.horaEntrada = -1;
                         if (!this.destinos[0]){
@@ -821,7 +822,7 @@ class Peticion {
                         this.parar();
                     }
                     else {
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                         this.horaEntrada = -1;
                     }
                 }
@@ -834,12 +835,12 @@ class Peticion {
                     this.y == datos['tuberiaPrincipio'].fromy + Tuberia.ancho / 2) {
                     //Avanzar a la dcha hasta llegar a tuberiaIntermediaIzdaCPU
                     console.log('tuberiaPrincipio')
-                    let salto = xDchaCerca(this.x, datos['tuberiaIntermediaIzdaCpus'].fromx + Tuberia.ancho / 2, default_v);
+                    let salto = xDchaCerca(this.x, datos['tuberiaIntermediaIzdaCpus'].fromx + Tuberia.ancho / 2, Peticion.default_v);
                     if (salto) {
                         this.avanzarDcha(salto)
                     }
                     else {
-                        this.avanzarDcha(default_v)
+                        this.avanzarDcha(Peticion.default_v)
                     }
                 }
 
@@ -858,28 +859,28 @@ class Peticion {
                     }
                     // si estamos debajo de nuestra cpu destino, avanzamos arriba
                     if (this.y > datos['cpus'][this.proxDestino['cpus']].tuberiaEntrada.fromy + Tuberia.ancho / 2){
-                        let salto = yArribaCerca(this.y, datos['cpus'][this.proxDestino['cpus']].tuberiaEntrada.fromy + Tuberia.ancho / 2, default_v);
+                        let salto = yArribaCerca(this.y, datos['cpus'][this.proxDestino['cpus']].tuberiaEntrada.fromy + Tuberia.ancho / 2, Peticion.default_v);
 
                         if (salto) {
                             console.log('saltooo->'+salto)
                             this.avanzarArriba(salto);
                         }
                         else {
-                            this.avanzarArriba(default_v);
+                            this.avanzarArriba(Peticion.default_v);
                         }
                     }
                     else if (this.y < datos['cpus'][this.proxDestino['cpus']].tuberiaEntrada.fromy + Tuberia.ancho / 2){
-                        let salto = yAbajoCerca(this.y, datos['cpus'][this.proxDestino['cpus']].tuberiaEntrada.fromy + Tuberia.ancho / 2, default_v);
+                        let salto = yAbajoCerca(this.y, datos['cpus'][this.proxDestino['cpus']].tuberiaEntrada.fromy + Tuberia.ancho / 2, Peticion.default_v);
 
                         if (salto) {
                             this.avanzarAbajo(salto);
                         }
                         else {
-                            this.avanzarAbajo(default_v);
+                            this.avanzarAbajo(Peticion.default_v);
                         }
                     }
                     else{
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                     }
                 }
 
@@ -887,13 +888,13 @@ class Peticion {
                 else if (this.x >= datos['cpus'][this.proxDestino['cpus']].tuberiaEntrada.fromx && this.x < datos['cpus'][this.proxDestino['cpus']].cola.cola[0].x + EstacionServicio.tamHuecos / 2 &&
                     this.y == datos['cpus'][this.proxDestino['cpus']].tuberiaEntrada.fromy + Tuberia.ancho / 2
                 ) {
-                    let salto = xDchaCerca(this.x, datos['cpus'][this.proxDestino['cpus']].cola.cola[0].x + EstacionServicio.tamHuecos / 2, default_v);
+                    let salto = xDchaCerca(this.x, datos['cpus'][this.proxDestino['cpus']].cola.cola[0].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
 
                     if (salto) {
                         this.avanzarDcha(salto);
                     }
                     else {
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                     }
                     this.decidiDestino = false;
                 }
@@ -931,13 +932,13 @@ class Peticion {
                             }
                             
                             else {
-                                this.avanzarDcha(default_v);
+                                this.avanzarDcha(Peticion.default_v);
                             }
                             break;
                         }
                         else {
                             if (i <  datos['cpus'][this.proxDestino['cpus']].cola.cola.length - 1) {
-                                let salto = xDchaCerca(this.x, datos['cpus'][this.proxDestino['cpus']].cola.cola[i + 1].x + EstacionServicio.tamHuecos / 2, default_v);
+                                let salto = xDchaCerca(this.x, datos['cpus'][this.proxDestino['cpus']].cola.cola[i + 1].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
 
                                 if (salto) {
                                     this.avanzarDcha(salto);
@@ -945,19 +946,19 @@ class Peticion {
                                     break;
                                 }
                                 else {
-                                    this.avanzarDcha(default_v);
+                                    this.avanzarDcha(Peticion.default_v);
                                 }
                             }
                             //Hay que saltar al recurso fisico
                             else {
-                                let salto = xDchaCerca(this.x, datos['cpus'][this.proxDestino['cpus']].recursoFisico.x, default_v);
+                                let salto = xDchaCerca(this.x, datos['cpus'][this.proxDestino['cpus']].recursoFisico.x, Peticion.default_v);
 
                                 if (salto) {
                                     this.avanzarDcha(salto);
                                     break;
                                 }
                                 else {
-                                    this.avanzarDcha(default_v);
+                                    this.avanzarDcha(Peticion.default_v);
                                 }
                             }
                         }
@@ -971,7 +972,7 @@ class Peticion {
                             this.parar();
                         }
                         else {
-                            this.avanzarDcha(default_v);
+                            this.avanzarDcha(Peticion.default_v);
                             this.destinos.shift();
                             this.horaEntrada = -1;
                             if (!this.destinos[0]){
@@ -980,13 +981,13 @@ class Peticion {
                         }
                     }
                     else if (this.x > datos['cpus'][this.proxDestino['cpus']].recursoFisico.x && this.x < datos['tuberiaIntermediaDchaCpus'].fromx + Tuberia.ancho / 2) {
-                        let salto = xDchaCerca(this.x, datos['tuberiaIntermediaDchaCpus'].fromx + Tuberia.ancho / 2, default_v);
+                        let salto = xDchaCerca(this.x, datos['tuberiaIntermediaDchaCpus'].fromx + Tuberia.ancho / 2, Peticion.default_v);
 
                         if (salto) {
                             this.avanzarDcha(salto);
                         }
                         else {
-                            this.avanzarDcha(default_v);
+                            this.avanzarDcha(Peticion.default_v);
                         }
                     }
                 }
@@ -995,13 +996,13 @@ class Peticion {
                     this.y >= datos['tuberiaIntermediaDchaCpus'].fromy - Tuberia.ancho / 2 && this.y <= datos['tuberiaIntermediaDchaCpus'].toy + Tuberia.ancho / 2
                 ) {
                     // avanzar hacia la direccion de tuberia Central
-                    let salto = yAbajoCerca(this.y, datos['tuberiaCentral'].fromy + Tuberia.ancho / 2, default_v);
+                    let salto = yAbajoCerca(this.y, datos['tuberiaCentral'].fromy + Tuberia.ancho / 2, Peticion.default_v);
                     if (this.y < datos['tuberiaCentral'].fromy + Tuberia.ancho / 2) {
                         if (salto) {
                             this.avanzarAbajo(salto);
                         }
                         else {
-                            this.avanzarAbajo(default_v);
+                            this.avanzarAbajo(Peticion.default_v);
                         }
                     }
                     else if (this.y > datos['tuberiaCentral'].fromy + Tuberia.ancho / 2) {
@@ -1009,11 +1010,11 @@ class Peticion {
                             this.avanzarArriba(salto);
                         }
                         else {
-                            this.avanzarArriba(default_v);
+                            this.avanzarArriba(Peticion.default_v);
                         }
                     }
                     else {
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                     }
                 }
 
@@ -1027,13 +1028,13 @@ class Peticion {
                     this.x < datos['estaciones'][0].cola.cola[0].x + EstacionServicio.tamHuecos / 2
                 )
                 {
-                    let salto = xDchaCerca(this.x, datos['estaciones'][0].cola.cola[0].x + EstacionServicio.tamHuecos / 2, default_v);
+                    let salto = xDchaCerca(this.x, datos['estaciones'][0].cola.cola[0].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
 
                     if (salto){
                         this.avanzarDcha(salto);
                     }
                     else{
-                        this.avanzarDcha(default_v)
+                        this.avanzarDcha(Peticion.default_v)
                     }
                 }
 
@@ -1070,13 +1071,13 @@ class Peticion {
                             }
                             
                             else {
-                                this.avanzarDcha(default_v);
+                                this.avanzarDcha(Peticion.default_v);
                             }
                             break;
                         }
                         else {
                             if (i <  datos['estaciones'][0].cola.cola.length - 1) {
-                                let salto = xDchaCerca(this.x, datos['estaciones'][0].cola.cola[i + 1].x + EstacionServicio.tamHuecos / 2, default_v);
+                                let salto = xDchaCerca(this.x, datos['estaciones'][0].cola.cola[i + 1].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
 
                                 if (salto) {
                                     this.avanzarDcha(salto);
@@ -1084,19 +1085,19 @@ class Peticion {
                                     break;
                                 }
                                 else {
-                                    this.avanzarDcha(default_v);
+                                    this.avanzarDcha(Peticion.default_v);
                                 }
                             }
                             //Hay que saltar al recurso fisico
                             else {
-                                let salto = xDchaCerca(this.x, datos['estaciones'][0].recursoFisico.x, default_v);
+                                let salto = xDchaCerca(this.x, datos['estaciones'][0].recursoFisico.x, Peticion.default_v);
 
                                 if (salto) {
                                     this.avanzarDcha(salto);
                                     break;
                                 }
                                 else {
-                                    this.avanzarDcha(default_v);
+                                    this.avanzarDcha(Peticion.default_v);
                                 }
                             }
                         }
@@ -1110,7 +1111,7 @@ class Peticion {
                             this.parar();
                         }
                         else {
-                            this.avanzarDcha(default_v);
+                            this.avanzarDcha(Peticion.default_v);
                             this.destinos.shift();
                             this.horaEntrada = -1;
                         }
@@ -1120,13 +1121,13 @@ class Peticion {
                     this.x < datos['tuberiaPabajo'].fromx + Tuberia.ancho / 2 &&
                     this.y == datos['tuberiaCentral'].fromy + Tuberia.ancho / 2)
                 {
-                    let salto = xDchaCerca(this.x, datos['tuberiaPabajo'].fromx + Tuberia.ancho/2, default_v);
+                    let salto = xDchaCerca(this.x, datos['tuberiaPabajo'].fromx + Tuberia.ancho/2, Peticion.default_v);
                 
                     if (salto){
                         this.avanzarDcha(salto);
                     }
                     else{
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                     }
                 }
 
@@ -1143,28 +1144,28 @@ class Peticion {
 
                     // si estamos debajo de nuestra estacion destino, avanzamos arriba
                     if (this.y > datos['estaciones'][this.proxDestino['estaciones']].tuberiaEntrada.fromy + Tuberia.ancho / 2){
-                        let salto = yArribaCerca(this.y, datos['estaciones'][this.proxDestino['estaciones']].tuberiaEntrada.fromy + Tuberia.ancho / 2, default_v);
+                        let salto = yArribaCerca(this.y, datos['estaciones'][this.proxDestino['estaciones']].tuberiaEntrada.fromy + Tuberia.ancho / 2, Peticion.default_v);
 
                         if (salto) {
                             this.avanzarArriba(salto);
                         }
                         else {
-                            this.avanzarArriba(default_v);
+                            this.avanzarArriba(Peticion.default_v);
                         }
 
                     }
                     else if (this.y < datos['estaciones'][this.proxDestino['estaciones']].tuberiaEntrada.fromy + Tuberia.ancho / 2){
-                        let salto = yAbajoCerca(this.y, datos['estaciones'][this.proxDestino['estaciones']].tuberiaEntrada.fromy + Tuberia.ancho / 2, default_v);
+                        let salto = yAbajoCerca(this.y, datos['estaciones'][this.proxDestino['estaciones']].tuberiaEntrada.fromy + Tuberia.ancho / 2, Peticion.default_v);
 
                         if (salto) {
                             this.avanzarAbajo(salto);
                         }
                         else {
-                            this.avanzarAbajo(default_v);
+                            this.avanzarAbajo(Peticion.default_v);
                         }
                     }
                     else{
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                     }
                 }
 
@@ -1172,14 +1173,14 @@ class Peticion {
                          this.x >= datos['tuberiaIntermediaIzdaEstaciones'].fromx + Tuberia.ancho / 2 && 
                          this.x < datos['estaciones'][this.proxDestino['estaciones']].cola.cola[0].x + EstacionServicio.tamHuecos / 2
                 ){
-                    let salto = xDchaCerca(this.x, datos['estaciones'][this.proxDestino['estaciones']].cola.cola[0].x + EstacionServicio.tamHuecos / 2, default_v);
+                    let salto = xDchaCerca(this.x, datos['estaciones'][this.proxDestino['estaciones']].cola.cola[0].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
 
                     if (salto){
                         this.avanzarDcha(salto);
                         this.horaEntrada = -1;
                     }
                     else{
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                     }
                 }
 
@@ -1217,13 +1218,13 @@ class Peticion {
                             }
                             
                             else {
-                                this.avanzarDcha(default_v);
+                                this.avanzarDcha(Peticion.default_v);
                             }
                             break;
                         }
                         else {
                             if (i <  datos['estaciones'][this.proxDestino['estaciones']].cola.cola.length - 1) {
-                                let salto = xDchaCerca(this.x, datos['estaciones'][this.proxDestino['estaciones']].cola.cola[i + 1].x + EstacionServicio.tamHuecos / 2, default_v);
+                                let salto = xDchaCerca(this.x, datos['estaciones'][this.proxDestino['estaciones']].cola.cola[i + 1].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
 
                                 if (salto) {
                                     this.avanzarDcha(salto);
@@ -1231,19 +1232,19 @@ class Peticion {
                                     break;
                                 }
                                 else {
-                                    this.avanzarDcha(default_v);
+                                    this.avanzarDcha(Peticion.default_v);
                                 }
                             }
                             //Hay que saltar al recurso fisico
                             else {
-                                let salto = xDchaCerca(this.x, datos['estaciones'][this.proxDestino['estaciones']].recursoFisico.x, default_v);
+                                let salto = xDchaCerca(this.x, datos['estaciones'][this.proxDestino['estaciones']].recursoFisico.x, Peticion.default_v);
 
                                 if (salto) {
                                     this.avanzarDcha(salto);
                                     break;
                                 }
                                 else {
-                                    this.avanzarDcha(default_v);
+                                    this.avanzarDcha(Peticion.default_v);
                                 }
                             }
                         }
@@ -1257,7 +1258,7 @@ class Peticion {
                             this.parar();
                         }
                         else {
-                            this.avanzarDcha(default_v);
+                            this.avanzarDcha(Peticion.default_v);
                             this.destinos.shift();
                             this.horaEntrada = -1;
                         }
@@ -1268,13 +1269,13 @@ class Peticion {
                     this.y == datos['estaciones'][this.proxDestino['estaciones']].tuberiaSalida.toy + Tuberia.ancho / 2
                 ){
                     console.log('tuberia salida estaciones')
-                    let salto = xDchaCerca(this.x, datos['tuberiaIntermediaDchaEstaciones'].fromx + Tuberia.ancho/2, default_v);
+                    let salto = xDchaCerca(this.x, datos['tuberiaIntermediaDchaEstaciones'].fromx + Tuberia.ancho/2, Peticion.default_v);
                     
                     if (salto){
                         this.avanzarDcha(salto);
                     }
                     else{
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                     }
                 }
 
@@ -1285,27 +1286,27 @@ class Peticion {
                 {
                     // avanzar hacia la direccion de tuberia final
                     if (this.y < datos['tuberiaFinal'].fromy + Tuberia.ancho / 2) {
-                        let salto = yAbajoCerca(this.y, datos['tuberiaFinal'].fromy + Tuberia.ancho / 2, default_v);
+                        let salto = yAbajoCerca(this.y, datos['tuberiaFinal'].fromy + Tuberia.ancho / 2, Peticion.default_v);
                         if (salto) {
                             this.avanzarAbajo(salto);
                         }
                         else {
-                            this.avanzarAbajo(default_v);   
+                            this.avanzarAbajo(Peticion.default_v);   
                         }
                     }
                     else if (this.y > datos['tuberiaFinal'].fromy + Tuberia.ancho / 2) {
                         console.log('lolitaaaaaaaaaaaaa')
-                        let salto = yArribaCerca(this.y, datos['tuberiaFinal'].fromy + Tuberia.ancho / 2, default_v);
+                        let salto = yArribaCerca(this.y, datos['tuberiaFinal'].fromy + Tuberia.ancho / 2, Peticion.default_v);
                         
                         if (salto) {
                             this.avanzarArriba(salto);
                         }
                         else {
-                            this.avanzarArriba(default_v);
+                            this.avanzarArriba(Peticion.default_v);
                         }
                     }
                     else {
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                     }       
                 }
                 else if (this.y == datos['tuberiaFinal'].fromy + Tuberia.ancho / 2 && 
@@ -1313,13 +1314,13 @@ class Peticion {
                          this.x < datos['tuberiaPabajo'].fromx + Tuberia.ancho / 2
                 )
                 {
-                    let salto = xDchaCerca(this.x, datos['tuberiaPabajo'].fromx + Tuberia.ancho / 2, default_v);
+                    let salto = xDchaCerca(this.x, datos['tuberiaPabajo'].fromx + Tuberia.ancho / 2, Peticion.default_v);
 
                     if (salto){
                         this.avanzarDcha(salto);
                     }
                     else{
-                        this.avanzarDcha(default_v);
+                        this.avanzarDcha(Peticion.default_v);
                         this.decidiDestino = false;
                     }
                 }
@@ -1332,35 +1333,35 @@ class Peticion {
             ) 
             {
                 this.horaEntrada = -1;
-                let salto = xDchaCerca(this.x, datos['tuberiaSalida'].tox + Tuberia.ancho / 2, default_v);
+                let salto = xDchaCerca(this.x, datos['tuberiaSalida'].tox + Tuberia.ancho / 2, Peticion.default_v);
                 if (salto) {
                     this.avanzarDcha(salto);
                 }
                 else {
                     if (datos['estaciones'].length == 1){
-                        salto = xDchaCerca(this.x, datos['estaciones'][0].cola.cola[0].x + EstacionServicio.tamHuecos / 2, default_v);
+                        salto = xDchaCerca(this.x, datos['estaciones'][0].cola.cola[0].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
 
                         if (salto){
                             this.avanzarDcha(salto);
                         }
                         else{
-                            this.avanzarDcha(default_v);
+                            this.avanzarDcha(Peticion.default_v);
                         }
                     }
                     else{
-                        salto = xDchaCerca(this.x, datos['tuberiaCentral'].tox + Tuberia.ancho / 2, default_v);
+                        salto = xDchaCerca(this.x, datos['tuberiaCentral'].tox + Tuberia.ancho / 2, Peticion.default_v);
 
                         if (salto){
                             this.avanzarDcha(salto);
                         }
                         else{
-                            this.avanzarDcha(default_v);
+                            this.avanzarDcha(Peticion.default_v);
                         }
                     }
                 }
 
                 if (this.destinos[0] == 'EXIT' && this.x == datos['tuberiaSalida'].tox + Tuberia.ancho / 2){
-                    this.avanzarArriba(default_v)
+                    this.avanzarArriba(Peticion.default_v)
                 }
             }
 
@@ -1369,38 +1370,38 @@ class Peticion {
             this.y < datos['tuberiaPabajo'].toy + Tuberia.ancho / 2                
             )
             {
-                let salto = yAbajoCerca(this.y, datos['tuberiaPabajo'].toy + Tuberia.ancho / 2, default_v);
+                let salto = yAbajoCerca(this.y, datos['tuberiaPabajo'].toy + Tuberia.ancho / 2, Peticion.default_v);
 
                 if (salto){
                     this.avanzarAbajo(salto);
                 }
                 else{
-                    this.avanzarAbajo(default_v);
+                    this.avanzarAbajo(Peticion.default_v);
                 }
             }
 
             else if (this.y == datos['tuberiaPabajo'].toy + Tuberia.ancho/2 && 
                 this.x <= datos['tuberiaPabajo'].fromx + Tuberia.ancho/2 && this.x > datos['tuberiaIzda'].tox - Tuberia.ancho / 2
             ){
-                let salto = xIzdaCerca(this.x, datos['tuberiaIzda'].tox - Tuberia.ancho/2, default_v);
+                let salto = xIzdaCerca(this.x, datos['tuberiaIzda'].tox - Tuberia.ancho/2, Peticion.default_v);
 
                 if (salto){
                     this.avanzarIzda(salto);
                 }
                 else{
-                    this.avanzarIzda(default_v);
+                    this.avanzarIzda(Peticion.default_v);
                 }
             }
             else if (this.y <= datos['tuberiaPabajo'].toy + Tuberia.ancho/2 && this.y > datos['tuberiaParriba'].toy - Tuberia.ancho / 2 &&
                     this.x == datos['tuberiaIzda'].tox - Tuberia.ancho/2
             ){
-                let salto = yArribaCerca(this.y, datos['tuberiaParriba'].toy - Tuberia.ancho / 2, default_v);
+                let salto = yArribaCerca(this.y, datos['tuberiaParriba'].toy - Tuberia.ancho / 2, Peticion.default_v);
 
                 if (salto){
                     this.avanzarArriba(salto);
                 }
                 else{
-                    this.avanzarArriba(default_v);
+                    this.avanzarArriba(Peticion.default_v);
                 }
             }
         }
@@ -1410,15 +1411,13 @@ class Peticion {
     
 };
 
-//modo normal -> default_v = 3
-//modo rapido -> default_v = 9
-//modo lento -> default_v = 1
+//modo normal -> Peticion.default_v = 3
+//modo rapido -> Peticion.default_v = 9
+//modo lento -> Peticion.default_v = 1
 
 
 //tengo que encontrar la forma de parar la ejecución de la función dibujarMapa en javascript
 //tengo que ampliar el movimiento de la bola para más cpus y más hdds
-
-var default_v = 9;
 
 //devuelve el salto necesario pa no pasarse
 function xDchaCerca(x1, x2, r) {
@@ -1580,7 +1579,7 @@ var raf
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    datos = dibujarMapa();
+    datos = simulacion.dibujarMapa();
     
     //dibujamos bola donde corresponda
     for (let i = 0; i < 20; ++i){
