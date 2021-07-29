@@ -577,11 +577,20 @@ function dibujarRestoUnaEstacion(numCpu, estaciones, cpus, pos){
 }
 
 class Simulacion{
+    static tiempoEsperaMaximo = 5000;
+    static duracionMaximaSimulacion = 120000;
     constructor(){
         this.numCpu = 1;
         this.listaEtiquetas = ['HDD0'];
         this.inicioSimulacion = new Date().getTime();
+        this.peticiones = [];
+        this.running = false;
+        this.duracion = 60000
+        this.contadorPeticiones = 0;
+        this.intervaloCreacionPeticiones = randomExponential(0.7)
+        this.primeraPeticion = true;
     }
+
     dibujarMapa() {
         //dibujar cpus
     
@@ -652,7 +661,7 @@ class Peticion {
         this.color = getRandomColor();
         this.horaEntrada = -1;
         this.reAvanzar = false;
-        this.destinos = ['CPU', 'HDD1', 'CPU'];
+        this.destinos = ['CPU', 'HDD0', 'CPU'];
         this.ultDestino = null;
         this.ubiUltDestino = null;
         this.proxDestino = {
@@ -660,6 +669,7 @@ class Peticion {
             'estaciones': 0,
         }
         this.decidiDestino = false;
+        this.horaCreacion = new Date().getTime();
     }
 
     parar(){
@@ -1513,10 +1523,8 @@ function estacionLibre(nombreEstacion){
     }
     
     for (const [i, estacion] of estacionesAIterar){
-        console.log('indice');
-        console.log(i);
         repEstacion[i] = 0;
-        for (const [,pet] of Object.entries(peticiones)){
+        for (const [,pet] of Object.entries(simulacion.peticiones)){
             if (pet.x > estacion.tuberiaEntrada.fromx - Tuberia.ancho / 2 &&
                 pet.x <= estacion.recursoFisico.x &&
                 pet.y == estacion.tuberiaEntrada.fromy + Tuberia.ancho / 2
@@ -1546,7 +1554,7 @@ function estacionLibre(nombreEstacion){
 }
 
 function puntoOcupado(x,y){
-    for (const [_,pet] of Object.entries(peticiones)){
+    for (const [_,pet] of Object.entries(simulacion.peticiones)){
         if (pet.x == x && pet.y == y){
             return true;
         }
@@ -1556,7 +1564,7 @@ function puntoOcupado(x,y){
 }
 
 function intervaloXOcupado(x1, x2, y){
-    for (const [_,pet] of Object.entries(peticiones)){
+    for (const [_,pet] of Object.entries(simulacion.peticiones)){
         if (pet.x > x1 && pet.x <= x2 && pet.y == y){
             return true;
         }
@@ -1574,43 +1582,69 @@ function getRandomColor() {
     return color;
 }
 
-var running = false;
+// ejecucion del programa:
 var raf
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     datos = simulacion.dibujarMapa();
     
-    //dibujamos bola donde corresponda
-    for (let i = 0; i < 20; ++i){
-        if (peticiones[i]){
-            peticiones[i].draw();
+    if (simulacion.running){
+        raf = window.requestAnimationFrame(draw);
+        let horaActual = new Date().getTime()
 
-            peticiones[i].haciaDestino();
+        // la simulacion se ejecuta durante la duracion especificada
+        if (horaActual < simulacion.inicioSimulacion + simulacion.duracion){
+
+            // la primera peticion se tiene que inicializar una vez
+            if (simulacion.primeraPeticion){
+                simulacion.peticiones[simulacion.contadorPeticiones] = new Peticion();
+                simulacion.contadorPeticiones++;
+                simulacion.primeraPeticion = false;
+            }
+
+            // el resto se fija en cuando se creó la anterior y le suma el intervalo random
+            if (horaActual > simulacion.peticiones[simulacion.contadorPeticiones-1].horaCreacion + simulacion.intervaloCreacionPeticiones){
+                simulacion.peticiones[simulacion.contadorPeticiones] = new Peticion();
+                simulacion.contadorPeticiones++;
+                simulacion.intervaloCreacionPeticiones = randomExponential(0.7)
+            }
+                
+            // dibujamos todas las peticiones que hayan sido creadas hasta el momento
+            simulacion.peticiones.forEach(function(pet){
+                pet.draw();
+                pet.haciaDestino();
+            })
         }
     }
 
+
     //avance lineal de bola
 
-    if (running){
-        raf = window.requestAnimationFrame(draw);
-    }
     else{
         window.cancelAnimationFrame(raf);
     }
 }
 
-var peticiones = []
-for (let i = 0; i < 20; ++i){
-    inicializar(peticiones, i);
+
+// pequeño cambio a https://gist.github.com/nicolashery/5885280
+// devuelve el tiempo en ms
+function randomExponential(rate, randomUniform) {
+    // http://en.wikipedia.org/wiki/Exponential_distribution#Generating_exponential_variates
+    rate = rate || 1;
+  
+    // Allow to pass a random uniform value or function
+    // Default to Math.random()
+    var U = randomUniform;
+    if (typeof randomUniform === 'function') U = randomUniform();
+    if (!U) U = Math.random();
+  
+    let ms = -Math.log(U)*1000/rate
+
+    return ms > Simulacion.tiempoEsperaMaximo ? Simulacion.tiempoEsperaMaximo : ms;
 }
 
-function inicializar(peticiones, i){
-        setTimeout(function (){
-            peticiones[i] = new Peticion();
-        }, 1000*i)
-}
-
+// let a = randomExponential(0.7);
 
 function transicionPlayPause(){
 
@@ -1623,20 +1657,16 @@ function transicionPlayPause(){
                        <path d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z"/>\
                     </svg>';
 
-    console.log('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
-    console.log(boton.innerHTML.includes('bi-pause'));
-    console.log('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
-
     if (boton.innerHTML.includes('bi-pause')){
         boton.innerHTML = simboloPlay;
         boton.style.backgroundColor = "#8FBC8F"
-        running = false;
+        simulacion.running = false;
         window.cancelAnimationFrame(raf);
     }
     else{
         boton.innerHTML = simboloPause;
         boton.style.backgroundColor = 'lightblue'
-        running = true;
+        simulacion.running = true;
         raf = window.requestAnimationFrame(draw);
     }
 }
