@@ -12,6 +12,71 @@ canvas.width = 4 * window.innerWidth;
 canvas.height = 4 * window.innerHeight;
 var ctx = canvas.getContext('2d');
 
+
+class Simulacion{
+    static tiempoEsperaMaximo = 5000;
+    static duracionMaximaSimulacion = 120000;
+    
+    constructor(){
+        this.numCpu = 1;
+        this.listaEtiquetas = ['HDD0'];
+        this.inicioSimulacion = new Date().getTime();
+        this.peticiones = [];
+        this.running = false;
+        this.duracion = 60000
+        this.contadorPeticiones = 0;
+        this.intervaloCreacionPeticiones = randomExponential(0.7)
+        this.primeraPeticion = true;
+    }
+
+    dibujarMapa() {
+        //dibujar cpus
+    
+        var pos = calcularPosicionesEstaciones(simulacion.numCpu, simulacion.listaEtiquetas.length);
+    
+        let dict_cpus = dibujarCpus(pos, simulacion.numCpu);
+        let cpus = dict_cpus["cpus"];
+    
+        var dict = dibujarEstaciones(pos, simulacion.listaEtiquetas);
+    
+        if (simulacion.numCpu > 1) {
+            var tuberiaPrincipio = dibujarEntradaCpus(cpus, simulacion.numCpu, pos);
+            dict['tuberiaPrincipio'] = tuberiaPrincipio
+        }
+    
+        dict['tuberiaIntermediaIzdaCpus'] = dict_cpus["tuberiaIntermediaIzdaCpus"];
+        dict['tuberiaIntermediaDchaCpus'] = dict_cpus["tuberiaIntermediaDchaCpus"];
+        var estaciones = dict['estaciones'];
+        var tuberiaFinal = dict['tuberiaFinal'];
+    
+        //resto recorrido estaciones
+        if (estaciones.length > 1) {
+            let dict_resto = restoRecorridoEstaciones(estaciones, tuberiaFinal, pos, simulacion.numCpu, tuberiaPrincipio, cpus);
+            dict = { ...dict, ...dict_resto };
+        }
+    
+        //tuberia central
+    
+        let tuberiaCentral = dibujarTuberiaCentral(simulacion.numCpu, estaciones, pos, cpus)
+        dict['tuberiaSalida'] = salidaServidor(tuberiaCentral, simulacion.numCpu, simulacion.listaEtiquetas);
+    
+        //recorrido de fin a inicio!
+    
+        if (estaciones.length == 1) {
+            let dictRestoEstacion = dibujarRestoUnaEstacion(simulacion.numCpu, estaciones, cpus, pos)
+            dict['tuberiaIzda'] = dictRestoEstacion['tuberiaIzda'];
+            dict['tuberiaParriba'] = dictRestoEstacion['tuberiaParriba'];
+            dict['tuberiaPabajo'] = dictRestoEstacion['tuberiaPabajo']
+        }
+    
+        dict['cpus'] = cpus;
+        dict['estaciones'] = estaciones;
+        dict['tuberiaCentral'] = tuberiaCentral;
+    
+        return dict;
+    }
+}
+
 // recurso fisico o servidor
 
 class RecursoFisico {
@@ -84,9 +149,13 @@ class Cola {
     }
 }
 
+var tiempoServicioCpus
+var tiempoServicioEstaciones
+
 class EstacionServicio {
     static nHuecos = 3;
     static tamHuecos = 50;
+    static tiempoServicio = randomExponential(0.8);
     constructor(nombreEstacion, xCola, yCola, numHuecos, tamHuecos, colorCola) {
         let grosorLinea = 0.3;
         EstacionServicio.nHuecos = numHuecos;
@@ -103,9 +172,7 @@ class EstacionServicio {
         let yRecurso = yCola + tamHuecos / 2;
         this.recursoFisico = new RecursoFisico(xRecurso, yRecurso, 0, 0 + grosorLinea, tamHuecos, 'orange', nombreEstacion);
 
-        this.tuberiaSalida = new Tuberia(xRecurso + this.recursoFisico.radius, yRecurso - tamHuecos / 4, xRecurso + this.recursoFisico.radius * 2 + 10.25, yRecurso - tamHuecos / 4, false, true);
-        
-        this.tiempoServicio = 2000; // ms
+        this.tuberiaSalida = new Tuberia(xRecurso + this.recursoFisico.radius, yRecurso - tamHuecos / 4, xRecurso + this.recursoFisico.radius * 2 + 10.25, yRecurso - tamHuecos / 4, false, true);        
     }
 
     draw() {
@@ -576,69 +643,6 @@ function dibujarRestoUnaEstacion(numCpu, estaciones, cpus, pos){
     return dict;
 }
 
-class Simulacion{
-    static tiempoEsperaMaximo = 5000;
-    static duracionMaximaSimulacion = 120000;
-    constructor(){
-        this.numCpu = 1;
-        this.listaEtiquetas = ['HDD0'];
-        this.inicioSimulacion = new Date().getTime();
-        this.peticiones = [];
-        this.running = false;
-        this.duracion = 60000
-        this.contadorPeticiones = 0;
-        this.intervaloCreacionPeticiones = randomExponential(0.7)
-        this.primeraPeticion = true;
-    }
-
-    dibujarMapa() {
-        //dibujar cpus
-    
-        var pos = calcularPosicionesEstaciones(simulacion.numCpu, simulacion.listaEtiquetas.length);
-    
-        let dict_cpus = dibujarCpus(pos, simulacion.numCpu);
-        let cpus = dict_cpus["cpus"];
-    
-        var dict = dibujarEstaciones(pos, simulacion.listaEtiquetas);
-    
-        if (simulacion.numCpu > 1) {
-            var tuberiaPrincipio = dibujarEntradaCpus(cpus, simulacion.numCpu, pos);
-            dict['tuberiaPrincipio'] = tuberiaPrincipio
-        }
-    
-        dict['tuberiaIntermediaIzdaCpus'] = dict_cpus["tuberiaIntermediaIzdaCpus"];
-        dict['tuberiaIntermediaDchaCpus'] = dict_cpus["tuberiaIntermediaDchaCpus"];
-        var estaciones = dict['estaciones'];
-        var tuberiaFinal = dict['tuberiaFinal'];
-    
-        //resto recorrido estaciones
-        if (estaciones.length > 1) {
-            let dict_resto = restoRecorridoEstaciones(estaciones, tuberiaFinal, pos, simulacion.numCpu, tuberiaPrincipio, cpus);
-            dict = { ...dict, ...dict_resto };
-        }
-    
-        //tuberia central
-    
-        let tuberiaCentral = dibujarTuberiaCentral(simulacion.numCpu, estaciones, pos, cpus)
-        dict['tuberiaSalida'] = salidaServidor(tuberiaCentral, simulacion.numCpu, simulacion.listaEtiquetas);
-    
-        //recorrido de fin a inicio!
-    
-        if (estaciones.length == 1) {
-            let dictRestoEstacion = dibujarRestoUnaEstacion(simulacion.numCpu, estaciones, cpus, pos)
-            dict['tuberiaIzda'] = dictRestoEstacion['tuberiaIzda'];
-            dict['tuberiaParriba'] = dictRestoEstacion['tuberiaParriba'];
-            dict['tuberiaPabajo'] = dictRestoEstacion['tuberiaPabajo']
-        }
-    
-        dict['cpus'] = cpus;
-        dict['estaciones'] = estaciones;
-        dict['tuberiaCentral'] = tuberiaCentral;
-    
-        return dict;
-    }
-}
-
 var simulacion = new Simulacion();
 
 var datos = simulacion.dibujarMapa();
@@ -670,6 +674,9 @@ class Peticion {
         }
         this.decidiDestino = false;
         this.horaCreacion = new Date().getTime();
+        this.horaDestruccion = null;
+
+        this.logDestinos = {}
     }
 
     parar(){
@@ -807,12 +814,18 @@ class Peticion {
                 ){
                     if (this.horaEntrada == -1) {
                         this.horaEntrada = new Date().getTime();
+                        this.logDestinos[this.horaEntrada] = 'CPU0';
+                        EstacionServicio.tiempoServicio = randomExponential(0.8);
+                        // console.log('HHHHHHHHHHHHHHHHHHHHHHHHH')
                     }
-                    if (this.horaEntrada + 1000 > new Date().getTime()) {
+                    if (this.horaEntrada + EstacionServicio.tiempoServicio > new Date().getTime()) {
                         console.log('paramos recurso cpu')
+                        console.log(EstacionServicio.tiempoServicio);
                         this.parar();
                     }
                     else {
+                        console.log('seguimos despues de cpu')
+                        console.log(EstacionServicio.tiempoServicio)
                         this.avanzarDcha(Peticion.default_v);
                         this.destinos.shift();
                         this.horaEntrada = -1;
@@ -821,23 +834,6 @@ class Peticion {
                         }
                     }
                 }
-
-                else if (this.x == datos['cpus'][0].recursoFisico.x &&
-                         this.y == datos['cpus'][0].tuberiaEntrada.fromy + Tuberia.ancho / 2 
-                ){
-                    if (this.horaEntrada == -1) {
-                        this.horaEntrada = new Date().getTime();
-                    }
-                    if (this.horaEntrada + datos['cpus'][0].tiempoServicio > new Date().getTime()) {
-                        this.parar();
-                    }
-                    else {
-                        this.avanzarDcha(Peticion.default_v);
-                        this.horaEntrada = -1;
-                    }
-                }
-
-                // else if (this.x > )
             }
             // más de una CPU
             else {
@@ -1117,7 +1113,7 @@ class Peticion {
                         if (this.horaEntrada == -1) {
                             this.horaEntrada = new Date().getTime();
                         }
-                        if (this.horaEntrada + datos['estaciones'][0].tiempoServicio > new Date().getTime()) {
+                        if (this.horaEntrada + EstacionServicio.tiempoServicio > new Date().getTime()) {
                             this.parar();
                         }
                         else {
@@ -1616,13 +1612,6 @@ function draw() {
                 pet.haciaDestino();
             })
         }
-    }
-
-
-    //avance lineal de bola
-
-    else{
-        window.cancelAnimationFrame(raf);
     }
 }
 
