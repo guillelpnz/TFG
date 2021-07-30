@@ -18,8 +18,8 @@ class Simulacion{
     static duracionMaximaSimulacion = 120000;
     
     constructor(){
-        this.numCpu = 1;
-        this.listaEtiquetas = ['HDD0'];
+        this.numCpu = 2;
+        this.listaEtiquetas = ['HDD0', 'SSD'];
         this.inicioSimulacion = new Date().getTime();
         this.peticiones = [];
         this.running = false;
@@ -63,7 +63,7 @@ class Simulacion{
         //recorrido de fin a inicio!
     
         if (estaciones.length == 1) {
-            let dictRestoEstacion = dibujarRestoUnaEstacion(simulacion.numCpu, estaciones, cpus, pos)
+            let dictRestoEstacion = dibujarRestoUnaEstacion(simulacion.numCpu, estaciones, cpus, pos, dict['tuberiaPrincipio'])
             dict['tuberiaIzda'] = dictRestoEstacion['tuberiaIzda'];
             dict['tuberiaParriba'] = dictRestoEstacion['tuberiaParriba'];
             dict['tuberiaPabajo'] = dictRestoEstacion['tuberiaPabajo']
@@ -149,13 +149,9 @@ class Cola {
     }
 }
 
-var tiempoServicioCpus
-var tiempoServicioEstaciones
-
 class EstacionServicio {
     static nHuecos = 3;
     static tamHuecos = 50;
-    static tiempoServicio = randomExponential(0.8);
     constructor(nombreEstacion, xCola, yCola, numHuecos, tamHuecos, colorCola) {
         let grosorLinea = 0.3;
         EstacionServicio.nHuecos = numHuecos;
@@ -593,7 +589,7 @@ function dibujarTuberiaCentral(numCpu, estaciones, pos, cpus){
     return tuberiaCentral;
 }
 
-function dibujarRestoUnaEstacion(numCpu, estaciones, cpus, pos){
+function dibujarRestoUnaEstacion(numCpu, estaciones, cpus, pos, tuberiaPrincipio){
     //dibujar esquinita superior derecha
     let dict = {}
     new Esquina(estaciones[0].tuberiaSalida.tox, estaciones[0].tuberiaSalida.toy, 'sup_dcha');
@@ -646,6 +642,18 @@ function dibujarRestoUnaEstacion(numCpu, estaciones, cpus, pos){
 var simulacion = new Simulacion();
 
 var datos = simulacion.dibujarMapa();
+
+// esto lo hago porque las cpus y las estaciones se están haciendo new constantemente, con lo cual no guardan los valores de tiempoServicio siempre igual.
+var tiempoServicioCpus = []
+var tiempoServicioEstaciones = []
+
+// for (let i in datos['cpus']){
+//     tiempoServicioCpus[i] = randomExponential(0.7);
+// }
+
+// for (let i in datos['estaciones']){
+//     tiempoServicioEstaciones[i] = randomExponential(0.7);
+// }
 
 // he decidido que datos sea una variable global al programa porque la utilizan casi todas las clases y funciones, y es muy necesaria.
 
@@ -815,17 +823,17 @@ class Peticion {
                     if (this.horaEntrada == -1) {
                         this.horaEntrada = new Date().getTime();
                         this.logDestinos[this.horaEntrada] = 'CPU0';
-                        EstacionServicio.tiempoServicio = randomExponential(0.8);
+                        tiempoServicioCpus[0] = randomExponential(0.9);
                         // console.log('HHHHHHHHHHHHHHHHHHHHHHHHH')
                     }
-                    if (this.horaEntrada + EstacionServicio.tiempoServicio > new Date().getTime()) {
+                    if (this.horaEntrada + tiempoServicioCpus[0] > new Date().getTime()) {
                         console.log('paramos recurso cpu')
-                        console.log(EstacionServicio.tiempoServicio);
+                        console.log(tiempoServicioCpus[0]);
                         this.parar();
                     }
                     else {
                         console.log('seguimos despues de cpu')
-                        console.log(EstacionServicio.tiempoServicio)
+                        console.log(tiempoServicioCpus[0])
                         this.avanzarDcha(Peticion.default_v);
                         this.destinos.shift();
                         this.horaEntrada = -1;
@@ -973,8 +981,9 @@ class Peticion {
                     if (this.x == datos['cpus'][this.proxDestino['cpus']].recursoFisico.x) {
                         if (this.horaEntrada == -1) {
                             this.horaEntrada = new Date().getTime();
+                            tiempoServicioCpus[this.proxDestino['cpus']] = randomExponential(0.9)
                         }
-                        if (this.horaEntrada + datos['cpus'][this.proxDestino['cpus']].tiempoServicio > new Date().getTime()) {
+                        if (this.horaEntrada + tiempoServicioCpus[this.proxDestino['cpus']] > new Date().getTime()) {
                             this.parar();
                         }
                         else {
@@ -1112,9 +1121,14 @@ class Peticion {
                     if (this.x == datos['estaciones'][0].recursoFisico.x) {
                         if (this.horaEntrada == -1) {
                             this.horaEntrada = new Date().getTime();
+                            tiempoServicioEstaciones[0] = randomExponential(0.9)
+                            console.log('tiempo de servicio justo al entrar a estacion');
+                            console.log(tiempoServicioEstaciones[0]);
                         }
-                        if (this.horaEntrada + EstacionServicio.tiempoServicio > new Date().getTime()) {
+                        if (this.horaEntrada + tiempoServicioEstaciones[0] > new Date().getTime()) {
                             this.parar();
+                            console.log('paramos en estaciones:')
+                            console.log(tiempoServicioEstaciones[0])
                         }
                         else {
                             this.avanzarDcha(Peticion.default_v);
@@ -1259,8 +1273,9 @@ class Peticion {
                     if (this.x == datos['estaciones'][this.proxDestino['estaciones']].recursoFisico.x) {
                         if (this.horaEntrada == -1) {
                             this.horaEntrada = new Date().getTime();
+                            tiempoServicioEstaciones[this.proxDestino['estaciones']] = randomExponential(0.9)
                         }
-                        if (this.horaEntrada + datos['estaciones'][this.proxDestino['estaciones']].tiempoServicio > new Date().getTime()) {
+                        if (this.horaEntrada + tiempoServicioEstaciones[this.proxDestino['estaciones']] > new Date().getTime()) {
                             this.parar();
                         }
                         else {
@@ -1603,7 +1618,7 @@ function draw() {
             if (horaActual > simulacion.peticiones[simulacion.contadorPeticiones-1].horaCreacion + simulacion.intervaloCreacionPeticiones){
                 simulacion.peticiones[simulacion.contadorPeticiones] = new Peticion();
                 simulacion.contadorPeticiones++;
-                simulacion.intervaloCreacionPeticiones = randomExponential(0.7)
+                simulacion.intervaloCreacionPeticiones = randomExponential(0.1)
             }
                 
             // dibujamos todas las peticiones que hayan sido creadas hasta el momento

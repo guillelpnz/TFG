@@ -5,4 +5,7 @@ from django.template import loader
 def index(request):
     context = {}
 
-    return render(request, "index.html", context)
+    if request.method == 'POST' and request.POST:
+        return render(request, "index.html", context)
+
+    return render(request, "formulario_config_simulacion.html", context)
