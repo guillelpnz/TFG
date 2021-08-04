@@ -1,0 +1,8 @@
+{
+    "numCpus": 9,
+    "HDDs": 1,
+    "SSDs": 1,
+    "NICs": 1,
+    "duracionSimulacion": 60
+}
+

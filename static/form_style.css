@@ -1,0 +1,8 @@
+#numCpusText, #numEstacionesText, #numHddsText,#numSsdsText,#numNicsText{
+    border: 0;
+    margin-left:5%;
+}
+
+.prueba{
+    background-color:lightblue;
+}

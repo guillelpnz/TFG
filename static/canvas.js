@@ -16,14 +16,15 @@ var ctx = canvas.getContext('2d');
 class Simulacion{
     static tiempoEsperaMaximo = 5000;
     static duracionMaximaSimulacion = 120000;
+    static modoRapido = false;
     
-    constructor(){
-        this.numCpu = 2;
-        this.listaEtiquetas = ['HDD0', 'SSD'];
+    constructor(numCpu, listaEtiquetas, duracion){
+        this.numCpu = numCpu;
+        this.listaEtiquetas = listaEtiquetas;
         this.inicioSimulacion = new Date().getTime();
         this.peticiones = [];
         this.running = false;
-        this.duracion = 60000
+        this.duracion = duracion*1000;
         this.contadorPeticiones = 0;
         this.intervaloCreacionPeticiones = randomExponential(0.7)
         this.primeraPeticion = true;
@@ -153,7 +154,7 @@ class EstacionServicio {
     static nHuecos = 3;
     static tamHuecos = 50;
     constructor(nombreEstacion, xCola, yCola, numHuecos, tamHuecos, colorCola) {
-        let grosorLinea = 0.3;
+        let grosorLinea = 0.77;
         EstacionServicio.nHuecos = numHuecos;
         //Tuberia más larga si es CPU
         if (nombreEstacion == 'CPU') {
@@ -332,14 +333,14 @@ function calcularPosicionesEstaciones(numCpu, numEstaciones) {
 
 function dibujarCpus(pos, numCpu) {
     //dibujar cpus
-    let inicioX = 280;
+    let inicioX = 280.5;
 
-    var cpus = [new EstacionServicio('CPU', inicioX, pos['cpus'], EstacionServicio.nHuecos, 50, 'white')];
+    var cpus = [new EstacionServicio('CPU0', inicioX, pos['cpus'], EstacionServicio.nHuecos, 50, 'white')];
 
     cpus[0].draw();
 
     for (let i = 1; i < numCpu; ++i) {
-        cpus.push(new EstacionServicio('CPU', inicioX, i * pos['separacion'] + pos['cpus'] + 0.5, EstacionServicio.nHuecos, 50, 'white'));
+        cpus.push(new EstacionServicio('CPU'+i, inicioX, i * pos['separacion'] + pos['cpus'] + 0.5, EstacionServicio.nHuecos, 50, 'white'));
         cpus[i].draw();
 
         // abrir huecos
@@ -639,7 +640,35 @@ function dibujarRestoUnaEstacion(numCpu, estaciones, cpus, pos, tuberiaPrincipio
     return dict;
 }
 
-var simulacion = new Simulacion();
+var simulacion
+function procesarJsonForm(){
+    var article = document.getElementById('jsonForm');
+    let jsonForm = article.dataset.jsonform;
+    var obj = JSON.parse(jsonForm.replaceAll("'", '"')); 
+
+    let listaEtiquetas = []
+
+    console.log(obj['numNics'])
+    
+    for (let i = 0; i < obj['numHdds']; ++i){
+        listaEtiquetas.push('HDD'+i)
+    }
+    for (let i = 0; i < obj["numSsds"]; ++i){
+        listaEtiquetas.push('SSD'+i)
+    }
+    for (let i = 0; i < obj["numNics"]; ++i){
+        listaEtiquetas.push('NIC'+i)
+    }
+
+    console.log(listaEtiquetas)
+
+    console.log(obj)
+    simulacion = new Simulacion(obj["numCpus"], listaEtiquetas, obj["duracionSimulacion"]);
+    console.log(simulacion)
+}
+
+procesarJsonForm();
+
 
 var datos = simulacion.dibujarMapa();
 
@@ -663,7 +692,7 @@ var tiempoServicioEstaciones = []
 // una cpu se ha pasado si la x ha estao en donde todas las cpus y la y en un rango
 
 class Peticion {
-    static default_v = 9;
+    static default_v = 7;
     constructor(){
         this.x = (datos['cpus'].length == 1) ? datos['cpus'][0].tuberiaEntrada.fromx + Tuberia.ancho / 2 : datos['tuberiaPrincipio'].fromx + Tuberia.ancho / 2;
         this.y = (datos['cpus'].length == 1) ? datos['cpus'][0].tuberiaEntrada.fromy + Tuberia.ancho / 2 : datos['tuberiaPrincipio'].fromy + Tuberia.ancho / 2;
@@ -673,7 +702,7 @@ class Peticion {
         this.color = getRandomColor();
         this.horaEntrada = -1;
         this.reAvanzar = false;
-        this.destinos = ['CPU', 'HDD0', 'CPU'];
+        this.destinos = ['CPU', 'HDD0', 'CPU', 'SSD0', 'CPU', 'HDD1', 'CPU'];
         this.ultDestino = null;
         this.ubiUltDestino = null;
         this.proxDestino = {
@@ -685,6 +714,28 @@ class Peticion {
         this.horaDestruccion = null;
 
         this.logDestinos = {}
+    }
+
+    huecoCPU(indiceCpu){
+        for(let i = 0; i < datos['cpus'][indiceCpu].cola.cola.length; ++i){
+            if (this.x == datos['cpus'][indiceCpu].cola.cola[i].x + EstacionServicio.tamHuecos / 2 && 
+                this.y == datos['cpus'][indiceCpu].cola.cola[i].y + EstacionServicio.tamHuecos / 2
+            )
+            {
+                return i;
+            }
+        }
+    }
+
+    huecoEstacion(indiceEstacion){
+        for(let i = 0; i < datos['estaciones'][indiceEstacion].cola.cola.length; ++i){
+            if (this.x == datos['estaciones'][indiceEstacion].cola.cola[i].x + EstacionServicio.tamHuecos / 2 && 
+                this.y == datos['estaciones'][indiceEstacion].cola.cola[i].y + EstacionServicio.tamHuecos / 2
+            )
+            {
+                return i;
+            }
+        }
     }
 
     parar(){
@@ -735,9 +786,6 @@ class Peticion {
     // la funcion ubiFromNombres no funciona. Hay que saber si estas entre tuberiaInicio y tuberiaIntermediaIzdaCPUS y el nombre del siguiente destino es == CPU.
     // entonces calculas donde está el menos ocupado
     haciaDestino() {
-        console.log('this.x->' + this.x)
-        console.log('this.y->' + this.y)
-
         // si quedan destinos por visitar
         if (this.destinos.length) {
             //estamos en el tramo de tuberia salida de estacion de servicio
@@ -750,6 +798,7 @@ class Peticion {
                     }
                     else {
                         this.avanzarDcha(Peticion.default_v);
+                        this.horaEntrada = -1;
                     }
                 }
 
@@ -772,6 +821,13 @@ class Peticion {
                                 )
                             ){
                                 this.parar();
+                                console.log('holaaaaaaaaaaa')
+                                console.log('horaEntrada->'+this.horaEntrada)
+                                if (this.horaEntrada == -1){
+                                    this.horaEntrada = new Date().getTime();
+                                    this.logDestinos[this.horaEntrada] = 'CPU0-HUECO'+this.huecoCPU(0);
+                                    console.log(this.logDestinos)
+                                }
                             }
                             else if (i == datos['cpus'][0].cola.cola.length - 1 && 
                                      intervaloXOcupado(datos['cpus'][0].cola.cola[i].x + EstacionServicio.tamHuecos / 2,
@@ -781,15 +837,20 @@ class Peticion {
                             )
                             {
                                 this.parar();
+                                if (this.horaEntrada == -1){
+                                    this.horaEntrada = new Date().getTime();
+                                    this.logDestinos[this.horaEntrada] = 'CPU0-HUECO'+this.huecoCPU(0)
+                                }
                             }
                             
                             else {
                                 this.avanzarDcha(Peticion.default_v);
+                                this.horaEntrada = -1;
                             }
                             break;
                         }
                         else {
-                            if (i != datos['cpus'][0].cola.cola.length - 1) {
+                            if (i < datos['cpus'][0].cola.cola.length - 1) {
                                 let salto = xDchaCerca(this.x, datos['cpus'][0].cola.cola[i + 1].x + EstacionServicio.tamHuecos / 2, Peticion.default_v);
 
                                 if (salto) {
@@ -823,17 +884,13 @@ class Peticion {
                     if (this.horaEntrada == -1) {
                         this.horaEntrada = new Date().getTime();
                         this.logDestinos[this.horaEntrada] = 'CPU0';
-                        tiempoServicioCpus[0] = randomExponential(0.9);
-                        // console.log('HHHHHHHHHHHHHHHHHHHHHHHHH')
+                        tiempoServicioCpus[0] = randomExponential(1.1);
                     }
                     if (this.horaEntrada + tiempoServicioCpus[0] > new Date().getTime()) {
-                        console.log('paramos recurso cpu')
-                        console.log(tiempoServicioCpus[0]);
                         this.parar();
                     }
                     else {
                         console.log('seguimos despues de cpu')
-                        console.log(tiempoServicioCpus[0])
                         this.avanzarDcha(Peticion.default_v);
                         this.destinos.shift();
                         this.horaEntrada = -1;
@@ -855,6 +912,7 @@ class Peticion {
                     }
                     else {
                         this.avanzarDcha(Peticion.default_v)
+                        this.horaEntrada = -1;
                     }
                 }
 
@@ -868,6 +926,7 @@ class Peticion {
                     // entrar aqui solo una vez
 
                     if (!this.decidiDestino){
+                        console.log('Decido como CPU a la->'+estacionLibre(this.destinos[0]))
                         this.proxDestino['cpus'] = estacionLibre(this.destinos[0]);
                         this.decidiDestino = true;
                     }
@@ -876,7 +935,6 @@ class Peticion {
                         let salto = yArribaCerca(this.y, datos['cpus'][this.proxDestino['cpus']].tuberiaEntrada.fromy + Tuberia.ancho / 2, Peticion.default_v);
 
                         if (salto) {
-                            console.log('saltooo->'+salto)
                             this.avanzarArriba(salto);
                         }
                         else {
@@ -934,6 +992,11 @@ class Peticion {
                                 )
                             ){
                                 this.parar();
+                                
+                                if (this.horaEntrada == -1){
+                                    this.horaEntrada = new Date().getTime();
+                                    this.logDestinos[this.horaEntrada] = 'CPU'+this.proxDestino['cpus']+'-HUECO'+this.huecoCPU(this.proxDestino['cpus'])
+                                }
                             }
                             else if (i == datos['cpus'][this.proxDestino['cpus']].cola.cola.length - 1 && 
                                      intervaloXOcupado(datos['cpus'][this.proxDestino['cpus']].cola.cola[i].x + EstacionServicio.tamHuecos / 2,
@@ -943,10 +1006,16 @@ class Peticion {
                             )
                             {
                                 this.parar();
+
+                                if (this.horaEntrada == -1){
+                                    this.horaEntrada = new Date().getTime();
+                                    this.logDestinos[this.horaEntrada] = 'CPU'+this.proxDestino['cpus']+'-HUECO'+this.huecoCPU(this.proxDestino['cpus'])
+                                }
                             }
                             
                             else {
                                 this.avanzarDcha(Peticion.default_v);
+                                this.horaEntrada = -1;
                             }
                             break;
                         }
@@ -969,6 +1038,7 @@ class Peticion {
 
                                 if (salto) {
                                     this.avanzarDcha(salto);
+                                    this.horaEntrada = -1;
                                     break;
                                 }
                                 else {
@@ -981,6 +1051,7 @@ class Peticion {
                     if (this.x == datos['cpus'][this.proxDestino['cpus']].recursoFisico.x) {
                         if (this.horaEntrada == -1) {
                             this.horaEntrada = new Date().getTime();
+                            this.logDestinos[this.horaEntrada] = 'CPU'+this.proxDestino['cpus']
                             tiempoServicioCpus[this.proxDestino['cpus']] = randomExponential(0.9)
                         }
                         if (this.horaEntrada + tiempoServicioCpus[this.proxDestino['cpus']] > new Date().getTime()) {
@@ -1000,6 +1071,7 @@ class Peticion {
 
                         if (salto) {
                             this.avanzarDcha(salto);
+                            this.horaEntrada = -1;
                         }
                         else {
                             this.avanzarDcha(Peticion.default_v);
@@ -1074,6 +1146,11 @@ class Peticion {
                                                   datos['estaciones'][0].cola.cola[i+1].y + EstacionServicio.tamHuecos / 2)
                             ){
                                 this.parar();
+
+                                if (this.horaEntrada == -1){
+                                    this.horaEntrada = new Date().getTime();
+                                    this.logDestinos[this.horaEntrada] = datos['estaciones'][0].recursoFisico.texto+'0-HUECO'+this.huecoEstacion(0)
+                                }
                             }
                             else if (i == datos['estaciones'][0].cola.cola.length - 1 && 
                                      intervaloXOcupado(datos['estaciones'][0].cola.cola[i].x + EstacionServicio.tamHuecos / 2,
@@ -1083,10 +1160,16 @@ class Peticion {
                             )
                             {
                                 this.parar();
+
+                                if (this.horaEntrada == -1){
+                                    this.horaEntrada = new Date().getTime();
+                                    this.logDestinos[this.horaEntrada] = datos['estaciones'][0].recursoFisico.texto+'0-HUECO'+this.huecoEstacion(0)
+                                }
                             }
                             
                             else {
                                 this.avanzarDcha(Peticion.default_v);
+                                this.horaEntrada = -1;
                             }
                             break;
                         }
@@ -1121,14 +1204,11 @@ class Peticion {
                     if (this.x == datos['estaciones'][0].recursoFisico.x) {
                         if (this.horaEntrada == -1) {
                             this.horaEntrada = new Date().getTime();
+                            this.logDestinos[this.horaEntrada] = datos['estaciones'][0].recursoFisico.texto
                             tiempoServicioEstaciones[0] = randomExponential(0.9)
-                            console.log('tiempo de servicio justo al entrar a estacion');
-                            console.log(tiempoServicioEstaciones[0]);
                         }
                         if (this.horaEntrada + tiempoServicioEstaciones[0] > new Date().getTime()) {
                             this.parar();
-                            console.log('paramos en estaciones:')
-                            console.log(tiempoServicioEstaciones[0])
                         }
                         else {
                             this.avanzarDcha(Peticion.default_v);
@@ -1160,7 +1240,8 @@ class Peticion {
                     this.x == datos['tuberiaIntermediaIzdaEstaciones'].fromx + Tuberia.ancho / 2
                 ){
                     console.log('estamos en decision estacion y proxDestino es: '+this.destinos[0])
-                    this.proxDestino['estaciones'] = this.destinos[0][this.destinos[0].length-1];
+                    this.proxDestino['estaciones'] = getIndiceEstacion(this.destinos[0]);
+                    console.log(this.proxDestino['estaciones'])
 
                     // si estamos debajo de nuestra estacion destino, avanzamos arriba
                     if (this.y > datos['estaciones'][this.proxDestino['estaciones']].tuberiaEntrada.fromy + Tuberia.ancho / 2){
@@ -1226,6 +1307,11 @@ class Peticion {
                                                   datos['estaciones'][this.proxDestino['estaciones']].cola.cola[i+1].y + EstacionServicio.tamHuecos / 2)
                             ){
                                 this.parar();
+
+                                if (this.horaEntrada == -1){
+                                    this.horaEntrada = new Date().getTime();
+                                    this.logDestinos[this.horaEntrada] = datos['estaciones'][this.proxDestino['estaciones']].recursoFisico.texto+'-HUECO'+this.huecoEstacion(this.proxDestino['estaciones'])
+                                }
                             }
                             else if (i == datos['estaciones'][this.proxDestino['estaciones']].cola.cola.length - 1 && 
                                      intervaloXOcupado(datos['estaciones'][this.proxDestino['estaciones']].cola.cola[i].x + EstacionServicio.tamHuecos / 2,
@@ -1235,10 +1321,16 @@ class Peticion {
                             )
                             {
                                 this.parar();
+
+                                if (this.horaEntrada == -1){
+                                    this.horaEntrada = new Date().getTime();
+                                    this.logDestinos[this.horaEntrada] = datos['estaciones'][this.proxDestino['estaciones']].recursoFisico.texto+'-HUECO'+this.huecoEstacion(this.proxDestino['estaciones'])
+                                }
                             }
                             
                             else {
                                 this.avanzarDcha(Peticion.default_v);
+                                this.horaEntrada = -1;
                             }
                             break;
                         }
@@ -1273,6 +1365,8 @@ class Peticion {
                     if (this.x == datos['estaciones'][this.proxDestino['estaciones']].recursoFisico.x) {
                         if (this.horaEntrada == -1) {
                             this.horaEntrada = new Date().getTime();
+
+                            this.logDestinos[this.horaEntrada] = datos['estaciones'][this.proxDestino['estaciones']].recursoFisico.texto
                             tiempoServicioEstaciones[this.proxDestino['estaciones']] = randomExponential(0.9)
                         }
                         if (this.horaEntrada + tiempoServicioEstaciones[this.proxDestino['estaciones']] > new Date().getTime()) {
@@ -1526,10 +1620,12 @@ function ubiFromNombres(destinos) {
 function estacionLibre(nombreEstacion){
     let repEstacion = {};
 
-    if (nombreEstacion == 'CPU'){
+    if (nombreEstacion.includes('CPU')){
         var estacionesAIterar = Object.entries(datos['cpus'])
     }
-    else if (nombreEstacion == 'HDD' || nombreEstacion == 'SSD' || nombreEstacion == 'NIC'){
+
+    // esto no se usa de momento
+    else if (nombreEstacion.includes('HDD') || nombreEstacion.includes('SSD')  || nombreEstacion.includes('NIC')){
         var estacionesAIterar = Object.entries(datos['estaciones'])
     }
     
@@ -1550,9 +1646,9 @@ function estacionLibre(nombreEstacion){
         // entonces asignamos un numero muy alto a su componente en el vector de ocurrencias
         // para que cuando busquemos el mínimo en éste, sólo obtengamos una comparacion entre los que se nos han pedido
         // pero con un índice relativo a todas las estaciones
-        if (estacion.recursoFisico.texto != nombreEstacion){
-            repEstacion[i] = Number.MAX_SAFE_INTEGER;
-        }
+        // if (estacion.recursoFisico.texto != nombreEstacion){
+        //     repEstacion[i] = Number.MAX_SAFE_INTEGER;
+        // }
     }
 
     // retorna la clave que contiene el menor valor
@@ -1564,6 +1660,15 @@ function estacionLibre(nombreEstacion){
     
 }
 
+// funcion que devuelve la posicion con respecto a todas las estaciones, de la estacion x
+function getIndiceEstacion(nombreEstacion){
+    for (const [i, estacion] of Object.entries(datos['estaciones'])){
+        if (nombreEstacion == estacion.recursoFisico.texto){
+            return i;
+        }
+    }
+}
+
 function puntoOcupado(x,y){
     for (const [_,pet] of Object.entries(simulacion.peticiones)){
         if (pet.x == x && pet.y == y){
@@ -1572,6 +1677,37 @@ function puntoOcupado(x,y){
     }
 
     return false;
+}
+
+function numPeticionesEnPunto(x,y){
+    let numPeticiones = 0;
+    for (const [_,pet] of Object.entries(simulacion.peticiones)){
+        if (pet.x == x && pet.y == y && pet.vx == 0){
+            numPeticiones++;
+        }
+    }
+
+    return numPeticiones
+}
+
+function dibujarContadorPeticiones(){
+    ctx.font = "20px Arial";
+    let marginTop = 10;
+    for (const [_,cpu] of Object.entries(datos['cpus'])){
+        let num = numPeticionesEnPunto(cpu.cola.cola[0].x + EstacionServicio.tamHuecos / 2, cpu.cola.cola[0].y + EstacionServicio.tamHuecos / 2)
+        
+        if (num >= 1){
+            ctx.fillText(num, cpu.cola.cola[0].x + EstacionServicio.tamHuecos / 2, cpu.cola.cola[0].y - marginTop);
+        }
+    }
+
+    for (const [_,estacion] of Object.entries(datos['estaciones'])){
+        let num = numPeticionesEnPunto(estacion.cola.cola[0].x + EstacionServicio.tamHuecos / 2, estacion.cola.cola[0].y + EstacionServicio.tamHuecos / 2)
+        
+        if (num >= 1){
+            ctx.fillText(num, estacion.cola.cola[0].x + EstacionServicio.tamHuecos / 2, estacion.cola.cola[0].y - marginTop);
+        }
+    }
 }
 
 function intervaloXOcupado(x1, x2, y){
@@ -1603,6 +1739,7 @@ function draw() {
     if (simulacion.running){
         raf = window.requestAnimationFrame(draw);
         let horaActual = new Date().getTime()
+        dibujarContadorPeticiones();
 
         // la simulacion se ejecuta durante la duracion especificada
         if (horaActual < simulacion.inicioSimulacion + simulacion.duracion){
@@ -1618,7 +1755,13 @@ function draw() {
             if (horaActual > simulacion.peticiones[simulacion.contadorPeticiones-1].horaCreacion + simulacion.intervaloCreacionPeticiones){
                 simulacion.peticiones[simulacion.contadorPeticiones] = new Peticion();
                 simulacion.contadorPeticiones++;
-                simulacion.intervaloCreacionPeticiones = randomExponential(0.1)
+
+                if (Simulacion.modoRapido){
+                    simulacion.intervaloCreacionPeticiones = randomExponential(1)
+                }
+                else{
+                    simulacion.intervaloCreacionPeticiones = randomExponential(0.1)
+                }
             }
                 
             // dibujamos todas las peticiones que hayan sido creadas hasta el momento
@@ -1627,9 +1770,15 @@ function draw() {
                 pet.haciaDestino();
             })
         }
+        else{
+            simulacion.running = false;
+        }
+    }
+    else{
+        (simulacion.peticiones.forEach(pet => console.log(pet.logDestinos)))
+        window.cancelAnimationFrame(raf)
     }
 }
-
 
 // pequeño cambio a https://gist.github.com/nicolashery/5885280
 // devuelve el tiempo en ms
@@ -1674,3 +1823,26 @@ function transicionPlayPause(){
         raf = window.requestAnimationFrame(draw);
     }
 }
+
+function botonModoRapido(){
+
+    let boton = document.getElementById("boton-acelerar");
+
+    if (boton.innerHTML.includes('1x')){
+        Peticion.default_v = 14;
+        Simulacion.modoRapido = true;
+        boton.innerHTML = '<span>2x</span>'
+    }
+    else{
+        Peticion.default_v = 7;
+        Simulacion.modoRapido = false;
+        boton.innerHTML = '<span>1x</span>'
+    }
+}
+
+function botonParar(){
+    window.cancelAnimationFrame(raf);
+    simulacion.duracion = 0;
+    draw();
+}
+
