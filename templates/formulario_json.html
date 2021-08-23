@@ -24,16 +24,13 @@
               <input type="file" class="form-control-file" name="archivo_json" id="exampleFormControlFile1" accept="application/JSON" required>
           </button>
 
-          <button type="submit" name="enviar_archivo" value=1 class="btn btn-success">Enviar archivo</button>
+          <button type="submit" name="enviar_archivo" value=1 class="btn btn-success mb-3">Enviar archivo</button>
         </div>
       </form>
 
-    {% if context.valores_erroneos %}
-    <p class="bg-danger mt-4 p-3 text-white">{{ context.valores_erroneos }}</p>
-    {% endif %}
+    {% for k, error in context.errores.items %}
+      <p class="bg-danger mt-1 p-3 text-white">{{ error }}</p>
+    {% endfor %}
 
-    {% if context.archivo_no_valido %}
-    <p class="bg-danger mt-4 p-3 text-white">{{ context.archivo_no_valido }}</p>
-    {% endif %}
 </body>
 </html>

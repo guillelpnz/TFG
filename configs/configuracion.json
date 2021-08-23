@@ -1,8 +1,40 @@
 {
-    "numCpus": 9,
-    "HDDs": 1,
-    "SSDs": 1,
-    "NICs": 1,
-    "duracionSimulacion": 60
+    "CPUS": [
+        {
+            "tiempoServicio": 1,
+            "tiempoServicioConstante": true
+        },
+        {
+            "tiempoServicio": 2,
+            "tiempoServicioConstante": false
+        }
+    ],
+    "HDDS": [
+        {
+            "tiempoServicio": 1,
+            "tiempoServicioConstante": true,
+            "razonVisita": 1,
+            "razonVisitaConstante": false
+        },
+        {
+            "tiempoServicio": 2,
+            "tiempoServicioConstante": false,
+            "razonVisita": 1,
+            "razonVisitaConstante": false
+        }
+    ],
+    "SSDS": [
+    ],
+    "NICS": [
+        {
+            "tiempoServicio": 1,
+            "tiempoServicioConstante": true,
+            "razonVisita": 1,
+            "razonVisitaConstante": false
+        }
+    ],
+    "tasaLlegada": {
+        "cantidad": 1,
+        "constante": false
+    }
 }
-
