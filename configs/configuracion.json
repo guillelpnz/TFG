@@ -13,13 +13,13 @@
         {
             "tiempoServicio": 1,
             "tiempoServicioConstante": true,
-            "razonVisita": 1,
+            "razonVisita": 0,
             "razonVisitaConstante": false
         },
         {
             "tiempoServicio": 2,
             "tiempoServicioConstante": false,
-            "razonVisita": 1,
+            "razonVisita": 0,
             "razonVisitaConstante": false
         }
     ],
@@ -29,7 +29,7 @@
         {
             "tiempoServicio": 1,
             "tiempoServicioConstante": true,
-            "razonVisita": 1,
+            "razonVisita": 0,
             "razonVisitaConstante": false
         }
     ],

@@ -2156,17 +2156,6 @@ function draw() {
     else {
         window.cancelAnimationFrame(raf)
 
-        // const headers = {
-        //     id: 'Identificador',
-        //     nombre: 'Nombre'
-        //    };
-        //    const data = [
-        //     { id: 1, nombre: 'John Doe' },
-        //     { id: 2, nombre: 'Juan' },
-        //     { id: 3, nombre: 'Samanta' }
-        //    ];
-        // exportCSVFile(headers, data, 'nombres');
-
         // formAnimacionTerminada()
     }
 }
@@ -2253,14 +2242,15 @@ function randomExponential(rate, tasaLlegada) {
 function transicionPlayPause() {
     let boton = document.getElementById("boton-play");
 
-    let simboloPause = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pause" viewBox="0 0 16 16">\
-                          <path d="M6 3.5a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zm4 0a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z"/>\
-                      </svg>';
+    let simboloPause = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stop-fill" viewBox="0 0 16 16">
+                            <path d="M5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11V5A1.5 1.5 0 0 1 5 3.5z"/>
+                        </svg>`;
+
     let simboloPlay = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-play" viewBox="0 0 16 16">\
                        <path d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z"/>\
                     </svg>';
 
-    if (boton.innerHTML.includes('bi-pause')) {
+    if (boton.innerHTML.includes('bi-stop')) {
         boton.innerHTML = simboloPlay;
         boton.style.backgroundColor = "#8FBC8F"
         simulacion.running = false;
@@ -2276,12 +2266,12 @@ function transicionPlayPause() {
             }
         }
 
-        window.cancelAnimationFrame(raf);
+        botonParar();
         mostrarCalculos()
     }
     else {
         boton.innerHTML = simboloPause;
-        boton.style.backgroundColor = 'lightblue'
+        boton.style.backgroundColor = 'red'
         simulacion.running = true;
         if (!simulacion.inicioSimulacion){
             simulacion.inicioSimulacion = new Date().getTime()
@@ -2417,7 +2407,7 @@ function numeroMedioPeticionesServidorFunc(){
     simulacion.peticionesActivas.forEach(p => numPeticionesActualesServidor++)
 
     for (const [k,v] of Object.entries(simulacion.medicionesNumPeticiones)){
-        if (Number.isNaN(v) || v === 'undefined'){
+        if (Number.isNaN(v) || v === undefined){
             simulacion.medicionesNumPeticiones[k] = 0
         }
     }
@@ -2518,6 +2508,13 @@ function mostrarCalculos(botonCalc){
             'nics': inicializarACero(numNics),
         },
 
+        'numMedioTrabajosEstacion' : {
+            'cpus': inicializarACero(numCpus),
+            'hdds': inicializarACero(numHdds),
+            'ssds': inicializarACero(numSsds),
+            'nics': inicializarACero(numNics),
+        },
+
         'utilizacionMedia' : {
             'cpus': inicializarACero(numCpus),
             'hdds': inicializarACero(numHdds),
@@ -2561,78 +2558,229 @@ function mostrarCalculos(botonCalc){
         },
     }
 
-    for (let i in simulacion.peticiones){
-        for (const [time, dest] of Object.entries(simulacion.peticiones[i].logDestinos)){
-            if (dest == 'ENTRADA-SERVIDOR'){
-                llegadas_servidor++;
-            }
-            else if (dest == 'SALIDA-SERVIDOR'){
-                salidas_servidor++;
-            }
+    //destinos de la estacion i
 
-            for (let i = 0; i < numCpus; ++i){
-                if (dest == 'ENTRADA-CPU'+i){
-                    dictCalculos['tasaLlegada']['cpus'][i]++;
-                    dictCalculos['entradasEstacion']['cpus'][i].push(time);
-                }
-                else if (dest == 'SALIDA-CPU'+i){
-                    dictCalculos['productividad']['cpus'][i]++;
-                    dictCalculos['salidasEstacion']['cpus'][i].push(time);
-                }
-                else if (dest == 'CPU'+i){
-                    dictCalculos['entradasRecurso']['cpus'][i].push(time);
-                }
-            }
+    let copiaSimulacion = JSON.parse(JSON.stringify(simulacion))
+    let horasEntradaServidor = []
+    let horasSalidaServidor = []
 
-            for (let i = 0; i < numHdds; ++i){
-                if (dest == 'ENTRADA-HDD'+i){
-                    dictCalculos['tasaLlegada']['hdds'][i]++;
-                    dictCalculos['entradasEstacion']['hdds'][i].push(time);
-                }
-                else if (dest == 'SALIDA-HDD'+i){
-                    dictCalculos['productividad']['hdds'][i]++;
-                    dictCalculos['salidasEstacion']['hdds'][i].push(time);
-                }
-                else if (dest == 'HDD'+i){
-                    dictCalculos['entradasRecurso']['hdds'][i].push(time);
-                }
-            }
+    for (let i in copiaSimulacion.peticiones){
+        let destinos_i = Object.values(copiaSimulacion.peticiones[i].logDestinos)
+        let tiempos_i = Object.keys(copiaSimulacion.peticiones[i].logDestinos)
+        horasEntradaServidor.push(-1)
+        horasSalidaServidor.push(-1)
 
-            for (let i = 0; i < numSsds; ++i){
-                if (dest == 'ENTRADA-SSD'+i){
-                    dictCalculos['tasaLlegada']['ssds'][i]++;
-                    dictCalculos['entradasEstacion']['ssds'][i].push(time);
-                }
-                else if (dest == 'SALIDA-SSD'+i){
-                    dictCalculos['productividad']['ssds'][i]++;
-                    dictCalculos['salidasEstacion']['ssds'][i].push(time);
-                }
-                else if (dest == 'SSD'+i){
-                    dictCalculos['entradasRecurso']['ssds'][i].push(time);
-                }
-            }
-
-            for (let i = 0; i < numNics; ++i){
-                if (dest == 'ENTRADA-NIC'+i){
-                    dictCalculos['tasaLlegada']['nics'][i]++;
-                    dictCalculos['entradasEstacion']['nics'][i].push(time);
-                }
-                else if (dest == 'SALIDA-NIC'+i){
-                    dictCalculos['productividad']['nics'][i]++;
-                    dictCalculos['salidasEstacion']['nics'][i].push(time);
-                }
-                else if (dest == 'NIC'+i){
-                    dictCalculos['entradasRecurso']['nics'][i].push(time);
-                }
-            }
-
-
-            // razonVisitaHdds
-            // razonVisitaSsds
-            // tiempoServicioNics
+        if (destinos_i.indexOf('SALIDA-SERVIDOR') != -1){
+            salidas_servidor = salidas_servidor + 1;
+            horasSalidaServidor[i] = tiempos_i[destinos_i.indexOf('SALIDA-SERVIDOR')]
         }
-        numPeticionesActualesServidor++;
+
+        if (destinos_i.indexOf('ENTRADA-SERVIDOR') != -1){
+            llegadas_servidor++;
+            horasEntradaServidor[i] = tiempos_i[destinos_i.indexOf('ENTRADA-SERVIDOR')]
+            delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[destinos_i.indexOf('ENTRADA-SERVIDOR')]]
+        }
+
+        for (let j = 0; j < numCpus; ++j){
+            let indexSalida = destinos_i.indexOf('SALIDA-CPU'+j)
+            let indexRecurso = destinos_i.indexOf('CPU'+j)
+            let indexEstacion = destinos_i.indexOf('ENTRADA-CPU'+j)
+            let addedRecurso = false, addedEstacion = false, addedSalida = false
+
+            if (indexRecurso != -1 && indexEstacion != -1){
+                dictCalculos['entradasEstacion']['cpus'][j].push(tiempos_i[indexEstacion])
+                addedEstacion = true;
+                dictCalculos['entradasRecurso']['cpus'][j].push(tiempos_i[indexRecurso])
+                addedRecurso = true;
+            }
+            else if (indexEstacion != -1){
+                dictCalculos['entradasEstacion']['cpus'][j].push(tiempos_i[indexEstacion])
+                addedEstacion = true;
+            }
+
+            if (indexSalida != -1 && indexRecurso != -1){
+                dictCalculos['salidasEstacion']['cpus'][j].push(tiempos_i[indexSalida])
+                addedSalida = true;
+
+                if (!addedRecurso){
+                    dictCalculos['entradasRecurso']['cpus'][j].push(tiempos_i[indexRecurso])
+                    addedRecurso = true;
+                }
+            }
+            else if (indexRecurso != -1){
+                if (!addedRecurso){
+                    dictCalculos['entradasRecurso']['cpus'][j].push(tiempos_i[indexRecurso])
+                }
+                addedRecurso = true;
+            }
+
+
+            if (indexSalida != -1){
+                dictCalculos['productividad']['cpus'][j]++;
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexSalida]]
+            }
+            if (indexRecurso != -1){
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexRecurso]]
+            }
+            if (indexEstacion != -1){
+                dictCalculos['tasaLlegada']['cpus'][j]++;
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexEstacion]]
+            }
+        }
+        for (let j = 0; j < numHdds; ++j){
+            let indexSalida = destinos_i.indexOf('SALIDA-HDD'+j)
+            let indexRecurso = destinos_i.indexOf('HDD'+j)
+            let indexEstacion = destinos_i.indexOf('ENTRADA-HDD'+j)
+            let addedRecurso = false, addedEstacion = false, addedSalida = false
+
+            if (indexRecurso != -1 && indexEstacion != -1){
+                dictCalculos['entradasEstacion']['hdds'][j].push(tiempos_i[indexEstacion])
+                addedEstacion = true;
+                dictCalculos['entradasRecurso']['hdds'][j].push(tiempos_i[indexRecurso])
+                addedRecurso = true;
+            }
+            else if (indexEstacion != -1){
+                dictCalculos['entradasEstacion']['hdds'][j].push(tiempos_i[indexEstacion])
+                addedEstacion = true;
+            }
+
+            if (indexSalida != -1 && indexRecurso != -1){
+                dictCalculos['salidasEstacion']['hdds'][j].push(tiempos_i[indexSalida])
+                addedSalida = true;
+
+                if (!addedRecurso){
+                    dictCalculos['entradasRecurso']['hdds'][j].push(tiempos_i[indexRecurso])
+                    addedRecurso = true;
+                }
+            }
+            else if (indexRecurso != -1){
+                if (!addedRecurso){
+                    dictCalculos['entradasRecurso']['hdds'][j].push(tiempos_i[indexRecurso])
+                }
+                addedRecurso = true;
+            }
+
+
+            if (indexSalida != -1){
+                dictCalculos['productividad']['hdds'][j]++;
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexSalida]]
+            }
+            if (indexRecurso != -1){
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexRecurso]]
+            }
+            if (indexEstacion != -1){
+                dictCalculos['tasaLlegada']['hdds'][j]++;
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexEstacion]]
+            }
+        }
+
+        for (let j = 0; j < numSsds; ++j){
+            let indexSalida = destinos_i.indexOf('SALIDA-SSD'+j)
+            let indexRecurso = destinos_i.indexOf('SSD'+j)
+            let indexEstacion = destinos_i.indexOf('ENTRADA-SSD'+j)
+            let addedRecurso = false, addedEstacion = false, addedSalida = false
+
+            if (indexRecurso != -1 && indexEstacion != -1){
+                dictCalculos['entradasEstacion']['ssds'][j].push(tiempos_i[indexEstacion])
+                addedEstacion = true;
+                dictCalculos['entradasRecurso']['ssds'][j].push(tiempos_i[indexRecurso])
+                addedRecurso = true;
+            }
+            else if (indexEstacion != -1){
+                dictCalculos['entradasEstacion']['ssds'][j].push(tiempos_i[indexEstacion])
+                addedEstacion = true;
+            }
+
+            if (indexSalida != -1 && indexRecurso != -1){
+                dictCalculos['salidasEstacion']['ssds'][j].push(tiempos_i[indexSalida])
+                addedSalida = true;
+
+                if (!addedRecurso){
+                    dictCalculos['entradasRecurso']['ssds'][j].push(tiempos_i[indexRecurso])
+                    addedRecurso = true;
+                }
+            }
+            else if (indexRecurso != -1){
+                if (!addedRecurso){
+                    dictCalculos['entradasRecurso']['ssds'][j].push(tiempos_i[indexRecurso])
+                }
+                addedRecurso = true;
+            }
+
+
+            if (indexSalida != -1){
+                dictCalculos['productividad']['ssds'][j]++;
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexSalida]]
+            }
+            if (indexRecurso != -1){
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexRecurso]]
+            }
+            if (indexEstacion != -1){
+                dictCalculos['tasaLlegada']['ssds'][j]++;
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexEstacion]]
+            }
+        }
+
+        for (let j = 0; j < numNics; ++j){
+            let indexSalida = destinos_i.indexOf('SALIDA-NIC'+j)
+            let indexRecurso = destinos_i.indexOf('NIC'+j)
+            let indexEstacion = destinos_i.indexOf('ENTRADA-NIC'+j)
+            let addedRecurso = false, addedEstacion = false, addedSalida = false
+
+            if (indexRecurso != -1 && indexEstacion != -1){
+                dictCalculos['entradasEstacion']['nics'][j].push(tiempos_i[indexEstacion])
+                addedEstacion = true;
+                dictCalculos['entradasRecurso']['nics'][j].push(tiempos_i[indexRecurso])
+                addedRecurso = true;
+            }
+            else if (indexEstacion != -1){
+                dictCalculos['entradasEstacion']['nics'][j].push(tiempos_i[indexEstacion])
+                addedEstacion = true;
+            }
+
+            if (indexSalida != -1 && indexRecurso != -1){
+                dictCalculos['salidasEstacion']['nics'][j].push(tiempos_i[indexSalida])
+                addedSalida = true;
+
+                if (!addedRecurso){
+                    dictCalculos['entradasRecurso']['nics'][j].push(tiempos_i[indexRecurso])
+                    addedRecurso = true;
+                }
+            }
+            else if (indexRecurso != -1){
+                if (!addedRecurso){
+                    dictCalculos['entradasRecurso']['nics'][j].push(tiempos_i[indexRecurso])
+                }
+                addedRecurso = true;
+            }
+
+
+            if (indexSalida != -1){
+                dictCalculos['productividad']['nics'][j]++;
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexSalida]]
+            }
+            if (indexRecurso != -1){
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexRecurso]]
+            }
+            if (indexEstacion != -1){
+                dictCalculos['tasaLlegada']['nics'][j]++;
+                delete copiaSimulacion.peticiones[i].logDestinos[tiempos_i[indexEstacion]]
+            }
+        }
     }
+
+    for (const[indEst,estacion] of Object.entries(dictCalculos["entradasEstacion"])){
+        estacion.forEach((medidas, indMedidas) => dictCalculos["entradasEstacion"][indEst][indMedidas] = medidas.sort())
+    }
+    for (const[indEst,estacion] of Object.entries(dictCalculos["entradasRecurso"])){
+        estacion.forEach((medidas, indMedidas) => dictCalculos["entradasRecurso"][indEst][indMedidas] = medidas.sort())
+    }
+    for (const[indEst,estacion] of Object.entries(dictCalculos["salidasEstacion"])){
+        estacion.forEach((medidas, indMedidas) => dictCalculos["salidasEstacion"][indEst][indMedidas] = medidas.sort())
+    }
+
+    numPeticionesActualesServidor = simulacion.peticiones.length;
+    
 
     let clavesPorTiempo = ['tasaLlegada', 'productividad']
 
@@ -2655,27 +2803,23 @@ function mostrarCalculos(botonCalc){
             for (const[indEst, est] of Object.entries(v)){
                 est.forEach((array,i) => {
                     if (k == 'tiempoEsperaEnCola'){
-                        for (let j in dictCalculos["entradasRecurso"][indEst][i]){
-                            if (dictCalculos["entradasRecurso"][indEst][i][j] !== 'undefined' && dictCalculos["entradasRecurso"][indEst][i][j] != 0){
-                                let tiempoCola = numCifrasDecimales((dictCalculos["entradasRecurso"][indEst][i][j] - dictCalculos["entradasEstacion"][indEst][i][j]) / dictCalculos["entradasRecurso"][indEst][i].length, 3)
-                                
-                                if (tiempoCola < 0){
-                                    tiempoCola = 1;
-                                }
-
-                                tiempoCola = numCifrasDecimales(parseFloat(tiempoCola/1000), 3)
-                                dictCalculos["tiempoEsperaEnCola"][indEst][i] += tiempoCola;
+                        for (let j in dictCalculos["entradasEstacion"][indEst][i]){
+                            let tiempoCola
+                            if (dictCalculos["entradasRecurso"][indEst][i][j] !== undefined && dictCalculos["entradasRecurso"][indEst][i][j] != 0){
+                                tiempoCola = numCifrasDecimales((dictCalculos["entradasRecurso"][indEst][i][j] - dictCalculos["entradasEstacion"][indEst][i][j]) / dictCalculos["entradasRecurso"][indEst][i].length, 3)
                             }
                             else{
-                                let tiempoCola = numCifrasDecimales((new Date().getTime() - dictCalculos["entradasEstacion"][indEst][i][j]) / dictCalculos["entradasRecurso"][indEst][i].length, 3);
-                                
-                                if (tiempoCola < 0){
-                                    tiempoCola = 1;
+                                if (!dictCalculos["entradasRecurso"][indEst][i][j]){
+                                    tiempoCola = numCifrasDecimales((new Date().getTime() - dictCalculos["entradasEstacion"][indEst][i][j]) / dictCalculos["entradasEstacion"][indEst][i].length, 3)
                                 }
-                                
-                                tiempoCola = numCifrasDecimales(parseFloat(tiempoCola/1000), 3)
-                                dictCalculos["tiempoEsperaEnCola"][indEst][i] += tiempoCola
+                                else{
+                                    tiempoCola = numCifrasDecimales((new Date().getTime() - dictCalculos["entradasEstacion"][indEst][i][j]) / dictCalculos["entradasRecurso"][indEst][i].length, 3)
+                                }
                             }
+
+                            tiempoCola = numCifrasDecimales(parseFloat(tiempoCola/1000), 3)
+                            dictCalculos["tiempoEsperaEnCola"][indEst][i] += tiempoCola;
+
                             dictCalculos["tiempoEsperaEnCola"][indEst][i] = numCifrasDecimales(parseFloat(dictCalculos["tiempoEsperaEnCola"][indEst][i]), 3)
                         }
                     }
@@ -2684,18 +2828,11 @@ function mostrarCalculos(botonCalc){
                             if (dictCalculos["salidasEstacion"][indEst][i][j] !== 'undefined' && dictCalculos["salidasEstacion"][indEst][i][j] != 0 ){       
                                 let tiempoServicio = numCifrasDecimales((dictCalculos["salidasEstacion"][indEst][i][j] - dictCalculos["entradasRecurso"][indEst][i][j]) / dictCalculos["salidasEstacion"][indEst][i].length, 3)
                                 tiempoServicio = numCifrasDecimales(parseFloat(tiempoServicio/1000), 3)
-                                if (tiempoServicio < 0){
-                                    tiempoServicio = 0.001;
-                                }
                                 dictCalculos["tiempoServicio"][indEst][i] += tiempoServicio;
                             }
                             else{
                                 let tiempoServicio = numCifrasDecimales((new Date().getTime() - dictCalculos["entradasRecurso"][indEst][i][j]) / dictCalculos["salidasEstacion"][indEst][i].length, 3);
                                 tiempoServicio = numCifrasDecimales(parseFloat(tiempoServicio/1000), 3)
-                                
-                                if (tiempoServicio < 0){
-                                    tiempoServicio = 0.001;
-                                }
                                 
                                 dictCalculos["tiempoServicio"][indEst][i] += tiempoServicio
                             }
@@ -2713,20 +2850,59 @@ function mostrarCalculos(botonCalc){
 
     for (const[indEst, est] of Object.entries(dictCalculos['demandaServicio'])){
         est.forEach((valor,i) => {
-            dictCalculos['demandaServicio'][indEst][i] = numCifrasDecimales(dictCalculos['tiempoEsperaEnCola'][indEst][i] / salidas_servidor, 3)
+            dictCalculos['demandaServicio'][indEst][i] = numCifrasDecimales(dictCalculos['razonVisita'][indEst][i] * dictCalculos['tiempoServicio'][indEst][i], 3)
+        })
+    }
+
+    for (const[indEst, est] of Object.entries(dictCalculos['numMedioTrabajosCola'])){
+        est.forEach((valor,i) => {
+            if (dictCalculos["entradasRecurso"][indEst][i].length){
+                dictCalculos['numMedioTrabajosCola'][indEst][i] = numCifrasDecimales((dictCalculos['tiempoEsperaEnCola'][indEst][i] * dictCalculos["entradasRecurso"][indEst][i].length) / relojSegundos, 3)
+            }
+            else{
+                dictCalculos['numMedioTrabajosCola'][indEst][i] = numCifrasDecimales((dictCalculos['tiempoEsperaEnCola'][indEst][i] * dictCalculos["entradasEstacion"][indEst][i].length) / relojSegundos, 3)
+            }
         })
     }
 
     for (const[indEst, est] of Object.entries(dictCalculos['utilizacionMedia'])){
         est.forEach((valor,i) => {
-            dictCalculos['utilizacionMedia'][indEst][i] = numCifrasDecimales(dictCalculos['tiempoEsperaEnCola'][indEst][i] / relojSegundos, 3)
+            if (dictCalculos["salidasEstacion"][indEst][i].length){
+                dictCalculos['utilizacionMedia'][indEst][i] = numCifrasDecimales((dictCalculos['tiempoServicio'][indEst][i] * dictCalculos["salidasEstacion"][indEst][i].length) / relojSegundos, 3)
+            }
+            else{
+                dictCalculos['utilizacionMedia'][indEst][i] = numCifrasDecimales((dictCalculos['tiempoServicio'][indEst][i] * dictCalculos["entradasRecurso"][indEst][i].length) / relojSegundos, 3)
+            }
+
+            if (dictCalculos['utilizacionMedia'][indEst][i] > 1){
+                dictCalculos['utilizacionMedia'][indEst][i] = 1
+            }
+        })
+    }
+
+    for (const[indEst, est] of Object.entries(dictCalculos['numMedioTrabajosEstacion'])){
+        est.forEach((valor,i) => {
+            dictCalculos['numMedioTrabajosEstacion'][indEst][i] = numCifrasDecimales(dictCalculos['numMedioTrabajosCola'][indEst][i] + dictCalculos['utilizacionMedia'][indEst][i], 3)
+
         })
     }
 
     let tasaLlegadaServidor = numCifrasDecimales(llegadas_servidor / relojSegundos, 3)
     let productividadServidor = numCifrasDecimales(salidas_servidor / relojSegundos, 3)
-    let tiempoMedioRespuestaServidor = numCifrasDecimales(relojSegundos / salidas_servidor, 3)
+
+    let tiempoMedioRespuestaServidor = 0;
+
+    for (let i in horasSalidaServidor){
+        if (horasSalidaServidor[i] != -1){
+            tiempoMedioRespuestaServidor += numCifrasDecimales((horasSalidaServidor[i] - horasEntradaServidor[i]) / (salidas_servidor*1000), 3);
+            tiempoMedioRespuestaServidor = numCifrasDecimales(tiempoMedioRespuestaServidor, 3)
+        }
+    }
     
+    if (!tiempoMedioRespuestaServidor){
+        tiempoMedioRespuestaServidor = 'Sin salidas'
+    }
+
     let cadena = `
     <style>
         table{
@@ -2776,13 +2952,107 @@ function mostrarCalculos(botonCalc){
     cadena = getTds(dictCalculos, cadena, 'nics', numNics)
     
     cadena += '</div></div>'
+
+    let headers = {
+        valoresEst: 'ValoresEstaciones',
+    }
+    let data = [
+    ];
+
+    let contVariables = 0;
+    for (const[varOp, dictEst] of Object.entries(dictCalculos)){
+        if (contVariables < 10){
+            data.push({
+                varOp: varOp
+            })
+        }
+        for (const[estacion, arrayValores] of Object.entries(dictEst)){
+            arrayValores.forEach((valor, i) => {
+                let nombreEstacion = ''
+                if (varOp == 'tasaLlegada'){
+                    if (estacion == 'cpus'){
+                        headers['CPU'+i] = 'CPU'+i
+                    }
+                    else if (estacion == 'hdds'){
+                        headers['HDD'+i] = 'HDD'+i
+                    }
+                    else if (estacion == 'ssds'){
+                        headers['SSD'+i] = 'SSD'+i
+                    }
+                    else if (estacion == 'nics'){
+                        headers['NIC'+i] = 'NIC'+i
+                    }   
+                }
+
+                if (estacion == 'cpus'){
+                    headers['CPU'+i] = 'CPU'+i
+                    nombreEstacion = 'CPU'+i
+                }
+                else if (estacion == 'hdds'){
+                    headers['HDD'+i] = 'HDD'+i
+                    nombreEstacion = 'HDD'+i
+                }
+                else if (estacion == 'ssds'){
+                    headers['SSD'+i] = 'SSD'+i
+                    nombreEstacion = 'SSD'+i
+                }
+                else if (estacion == 'nics'){
+                    headers['NIC'+i] = 'NIC'+i
+                    nombreEstacion = 'NIC'+i
+                }
+                if (contVariables < 10){
+                    data[contVariables][nombreEstacion+'-'+varOp] = valor
+                }
+            })
+        }
+        contVariables++
+    }
+
+    dictCalculosServidor = {
+        'llegadasServidor': llegadas_servidor,
+        'salidasServidor': salidas_servidor,
+        'tiempoTranscurrido': relojSegundos,
+        'tasaLlegadaServidor': tasaLlegadaServidor,
+        'productividadServidor': productividadServidor,
+        'tiempoMedioRespuestaServidor': tiempoMedioRespuestaServidor,
+        'numMedioPeticionesServidor':simulacion.numeroMedioPeticionesServidor,
+    }
+
+    headers['SERVIDOR'] = 'SERVIDOR'
+
+    let numEstaciones = parseInt(numCpus)+parseInt(numHdds)+parseInt(numSsds)+parseInt(numNics)
+
+    let lista = []
+    for (let i = 0; i < numEstaciones; ++i){
+        lista[i] = i
+    }
+
+    let contServ = 10
+    for (const[k,v] of Object.entries(dictCalculosServidor)){
+        data.push({
+        })
+        data[contServ][k] = k
+        for (let i in lista){
+            data[contServ]['nulo'+i] = 0
+        }
+        data[contServ]['servidor'] = v
+        contServ++;
+    }   
     
     Swal.fire({
         title: 'Datos actuales',
         html: cadena,
         icon: 'info',
         confirmButtonText: 'Ok',
+        cancelButtonText: 'Descargar CSV',
+        cancelButtonColor: 'green',
+        showCancelButton: true,
         width: '80%'
+    }).then(function(result){
+        if(result.value){
+        }else if(result.dismiss == 'cancel'){
+            exportCSVFile(headers, data, 'informacion-simulacion.csv')
+        }
     })
 }
 
@@ -2794,6 +3064,8 @@ function getTds(dictCalculos, cadena, estacion, tam){
         cadena += '<td>'+dictCalculos["tiempoRespuesta"][estacion][i]+'</td>'
         cadena += '<td>'+dictCalculos["tasaLlegada"][estacion][i]+'</td>'
         cadena += '<td>'+dictCalculos["productividad"][estacion][i]+'</td>'
+        cadena += '<td>'+dictCalculos["numMedioTrabajosCola"][estacion][i]+'</td>'
+        cadena += '<td>'+dictCalculos["numMedioTrabajosEstacion"][estacion][i]+'</td>'
         cadena += '<td>'+dictCalculos["utilizacionMedia"][estacion][i]+'</td>'
         cadena += '<td>'+dictCalculos["razonVisita"][estacion][i]+'</td>'
         cadena += '<td>'+dictCalculos["demandaServicio"][estacion][i]+'</td></tr>'
@@ -2812,6 +3084,8 @@ function getThs(cadena, etiqueta){
             <th>R<sub>i</sub></th>
             <th>&lambda;<sub>i</sub></th>
             <th>X<sub>i</sub></th>
+            <th>Q<sub>i</sub></th>
+            <th>N<sub>i</sub></th>
             <th>U<sub>i</sub></th>
             <th>V<sub>i</sub></th>
             <th>D<sub>i</sub></th>
