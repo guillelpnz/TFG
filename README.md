@@ -36,7 +36,7 @@ o mediante un formulario web.
 
 ### Mediante archivo json
 
-En la carpeta config puede encontrarse una plantilla de JSON válida para su subida al servidor.
+En la carpeta /configs puede encontrarse una plantilla de JSON válida para su subida al servidor.
 
 ## Valores permitidos
 
