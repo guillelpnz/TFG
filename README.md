@@ -34,6 +34,7 @@ Posteriormente, lo que se debe hacer es crear una SECRET_KEY. Labores de la clav
 
 - Generar una sal única para funciones hash.
 
+Más información sobre la SECRET_KEY de Django en: https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
 
 Para no revelarla, una práctica usual es introducirla en un archivo oculto, que llamamos
 .env. Para poder hacer esto, podemos hacer uso del siguiente comando:
