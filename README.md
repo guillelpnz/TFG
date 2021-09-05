@@ -8,11 +8,47 @@ dentro de un servidor. Tiene fines didácticos y de optimización de servidores.
 
 ## Dependencias
 
-Para poder ejecutar el proyecto, se debe descargar el framework django. Esto puede hacerse mediante el comando:
+Para poder ejecutar el proyecto, se debe descargar el gestor de paquetes pip3. Para esto podemos ejecutar 
+
+```bash
+
+sudo apt install python3-pip
+
+```
+
+También se debe descargar el framework django. Esto puede hacerse mediante el comando:
 
 ```bash
 
 pip3 install django
+
+```
+
+Posteriormente, lo que se debe hacer es crear una SECRET_KEY. Labores de la clave:
+
+- Firma de datos serializados (por ejemplo, documentos JSON).
+
+- Tokens únicos para una sesión de usuario, solicitud de restablecimiento de contraseña, mensajes, etc.
+
+- Prevención de ataques entre sitios o de repetición agregando (y luego esperando) valores únicos para la solicitud.
+
+- Generar una sal única para funciones hash.
+
+
+Para no revelarla, una práctica usual es introducirla en un archivo oculto, que llamamos
+.env. Para poder hacer esto, podemos hacer uso del siguiente comando:
+
+```bash
+
+echo "SECRET_KEY=valorSecreto" >> .env
+
+```
+
+Por último, debemos instalar la librería: numpy
+
+```bash
+
+pip3 install numpy
 
 ```
 
