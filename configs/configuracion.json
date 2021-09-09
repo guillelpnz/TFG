@@ -1,13 +1,9 @@
 {
     "CPUS": [
-        {
+    	{
             "tiempoServicio": 1,
             "tiempoServicioConstante": true
-        },
-        {
-            "tiempoServicio": 2,
-            "tiempoServicioConstante": false
-        }
+    	}
     ],
     "HDDS": [
         {
