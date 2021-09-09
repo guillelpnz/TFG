@@ -16,11 +16,13 @@ sudo apt install python3-pip
 
 ```
 
-También se debe descargar el framework django. Esto puede hacerse mediante el comando:
+También se debe descargar el framework django, así como la librería python-decouple,
+que sirve para ocultar la SECRET_KEY automáticamente generada por Django. Además, instalaremos también el paquete numpy.
+Esto puede hacerse mediante el comando:
 
 ```bash
 
-pip3 install django
+pip3 install django python-decouple numpy
 
 ```
 
@@ -42,14 +44,6 @@ Para no revelarla, una práctica usual es introducirla en un archivo oculto, que
 ```bash
 
 echo "SECRET_KEY=valorSecreto" >> .env
-
-```
-
-Por último, debemos instalar la librería: numpy
-
-```bash
-
-pip3 install numpy
 
 ```
 

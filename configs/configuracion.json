@@ -24,6 +24,12 @@
         }
     ],
     "SSDS": [
+        {
+            "tiempoServicio": 2,
+            "tiempoServicioConstante": false,
+            "razonVisita": 0,
+            "razonVisitaConstante": false
+        }
     ],
     "NICS": [
         {
